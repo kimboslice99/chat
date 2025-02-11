@@ -115,12 +115,36 @@ io.sockets.on("connection", function(socket){
 
 			// Tell everyone user left
 			io.to("main").emit("ul", {
-				"nick": nick
+				"nick": nick,
+				"id": socket.id
 			});
 
 			console.log("User %s left.", nick.replace(/(<([^>]+)>)/ig, ""));
 			socket.leave("main");
 			nick = null;
 		}
+	});
+
+	/* Client is ready for audio communication, inform all other clients in "main" */
+	socket.on('ready', () => {
+		if (nick != null){
+			console.log('ready', nick, socket.id);
+			socket.to("main").emit('user-ready', socket.id);
+		} else {
+			console.log('Received ready from client without nick', socket.id);
+		}
+	});
+
+	/* Client has given us signal for peer */
+	socket.on('signal', (data) => {
+		if (!nick || !data || !data.target || !data.signal) {
+			console.log('Invalid signal received from', socket.id);
+			return;
+		}
+
+		socket.to(data.target).emit('signal', {
+			from: socket.id,
+			signal: data.signal
+		});
 	});
 });

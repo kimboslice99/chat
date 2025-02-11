@@ -13,10 +13,29 @@
 <body>
 	<div class="chat">
 		<div id="chat-box" class="chat-box">
-			<div id="offline"><span class="big">Server is offline.</span><br />Sorry for that.</div>
+			<div id="offline"><span class="big">Server is offline.</span><br />Sorry about that.</div>
 			<ul id="msgs" class="msgs"></ul>
 			<ul id="typing" class="msgs"></ul>
 			<ul id="emic" style="display:none;"></ul>
+		</div>
+		<div class="chat-audio">
+			<div id="remoteAudios"></div>
+			<audio id="localAudio" autoplay muted></audio>
+			<div id="errorMsg" class="error" class="display-none"></div>
+			<div class="display-none checkboxes" id="audioControls">
+				<label class="audio-controls">
+					<span>Test Mic</span>
+					<input type="checkbox" id="toggleMicPlayback">
+				</label>
+				<label class="audio-controls">
+					<span>Mute Mic</span>
+					<input type="checkbox" id="toggleMicMute">
+				</label>
+				<label class="audio-controls">
+					<span>Mute Chat</span>
+					<input type="checkbox" id="muteChat">
+				</label>
+			</div>
 		</div>
 		<div class="chat-form">
 			<button id="emic_btn">
@@ -38,5 +57,6 @@
 		Emic.init();
 		Chat.init(socket);
 	</script>
+	<script type="text/javascript" src="static/scripts/webrtc.js"></script>
 </body>
 </html>

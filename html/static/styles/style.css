@@ -287,7 +287,7 @@ a {
 	box-shadow: none;
 }
 
-#send{
+#send {
 	background: none;
 	color: white;
 	text-transform: uppercase;
@@ -323,4 +323,41 @@ a {
 
 #users li:last-child:after {
 	content: "";
+}
+
+.audio-controls {
+	background: none;
+	color: white;
+	border: 0;
+	cursor: pointer;
+	-webkit-user-select: none; /* Safari */
+	-ms-user-select: none; /* IE 10 and IE 11 */
+	user-select: none; /* Standard syntax */
+	font-size: x-small;
+}
+
+.chat-audio {
+	display: flex;
+	justify-content: center;
+}
+
+.display-none {
+	display: none;
+}
+
+input[type=checkbox]{
+	filter: sepia(100%) brightness(80%) hue-rotate(234deg) saturate(70%) contrast(300%);
+	cursor: pointer;
+}
+
+.checkboxes label {
+	padding: 8px;
+}
+
+.checkboxes input, .checkoxes label span {
+	vertical-align: middle;
+}
+
+.error {
+	font-size: small;
 }
