@@ -59,6 +59,7 @@ a {
 
 .message-from-self {
 	margin-left: auto !important;
+	padding-right: 6px;
 }
 
 #typing li {
