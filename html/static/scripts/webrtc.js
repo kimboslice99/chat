@@ -86,8 +86,6 @@ waitForCondition(() => Chat.is_online, () => {
         console.log('RTC Enabled:', enabled);
         if (enabled) {
             checkMediaDevices();
-        } else {
-            showError("RTC is disabled on the server. Voice chat is unavailable.");
         }
     });
 });
