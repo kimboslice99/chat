@@ -137,8 +137,6 @@ io.sockets.on("connection", function(socket){
 			if (nick != null){
 				console.log('ready', nick, socket.id);
 				socket.to("main").emit('user-ready', socket.id);
-			} else {
-				console.log('Received ready from client without nick', socket.id);
 			}
 		}
 	});
