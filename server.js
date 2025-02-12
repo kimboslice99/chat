@@ -6,6 +6,7 @@ const path = require('path')
 const html = path.join(__dirname, '/html');
 app.use(express.static(html))
 
+const rtcEnabled = process.env.CHAT_RTC_ENABLED === "true";
 const port = process.argv[2] || 8090;
 const http = require("http").Server(app);
 
@@ -125,26 +126,35 @@ io.sockets.on("connection", function(socket){
 		}
 	});
 
+	// for clients to ask if server is offering rtc signalling.
+    socket.on('is-rtc-enabled', () => {
+        socket.emit('rtc-enabled', rtcEnabled);
+    });
+
 	/* Client is ready for audio communication, inform all other clients in "main" */
 	socket.on('ready', () => {
-		if (nick != null){
-			console.log('ready', nick, socket.id);
-			socket.to("main").emit('user-ready', socket.id);
-		} else {
-			console.log('Received ready from client without nick', socket.id);
+		if (rtcEnabled){
+			if (nick != null){
+				console.log('ready', nick, socket.id);
+				socket.to("main").emit('user-ready', socket.id);
+			} else {
+				console.log('Received ready from client without nick', socket.id);
+			}
 		}
 	});
 
 	/* Client has given us signal for peer */
 	socket.on('signal', (data) => {
-		if (!nick || !data || !data.target || !data.signal) {
-			console.log('Invalid signal received from', socket.id);
-			return;
-		}
+		if (rtcEnabled){
+			if (!nick || !data || !data.target || !data.signal) {
+				console.log('Invalid signal received from', socket.id);
+				return;
+			}
 
-		socket.to(data.target).emit('signal', {
-			from: socket.id,
-			signal: data.signal
-		});
+			socket.to(data.target).emit('signal', {
+				from: socket.id,
+				signal: data.signal
+			});
+		}
 	});
 });

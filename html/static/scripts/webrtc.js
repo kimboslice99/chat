@@ -62,8 +62,6 @@ function showError(message) {
     }
 }
 
-// Wait for Chat to be online before checking media
-// additionally, keep polling for microphone if none found, user may plug one in afterwards
 function waitForCondition(condition, callback) {
     if (condition()) {
         callback();
@@ -72,7 +70,27 @@ function waitForCondition(condition, callback) {
     }
 }
 
-waitForCondition(() => Chat.is_online, checkMediaDevices);
+function isRTCEnabled(callback) {
+    socket.emit('is-rtc-enabled');
+    socket.once('rtc-enabled', (enabled) => {
+        callback(enabled);
+    });
+}
+
+// Wait for Chat to be online
+// then ask if server offers rtc signalling
+// additionally, we keep polling for microphone if none found, user may plug one in afterwards
+// we should handle the case where a client has changed microphones, perhaps? TODO
+waitForCondition(() => Chat.is_online, () => {
+    isRTCEnabled((enabled) => {
+        console.log('RTC Enabled:', enabled);
+        if (enabled) {
+            checkMediaDevices();
+        } else {
+            showError("RTC is disabled on the server. Voice chat is unavailable.");
+        }
+    });
+});
 
 /**
  * Creates a new RTCPeerConnection for a given peer ID and manages media tracks, remote streams, and ICE candidates.
