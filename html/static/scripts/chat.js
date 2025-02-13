@@ -540,5 +540,13 @@ var Chat = {
 				reader.readAsDataURL(file);
 			}
 		});
+
+		// close socket upon refresh or tab close, free the username
+		window.addEventListener("beforeunload", () => {
+			if(!Chat.is_online){
+				return;
+			}
+			Chat.socket.disconnect();
+		});
 	}
 };
