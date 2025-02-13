@@ -363,6 +363,8 @@ var Chat = {
 
 		// Load all users
 		start: function(r){
+			const event = new CustomEvent("chat-active");
+			document.dispatchEvent(event);
 			Chat.users.innerText = '';
 
 			for(var user in r.users){
