@@ -6,7 +6,7 @@ const path = require('path')
 const html = path.join(__dirname, '/html');
 app.use(express.static(html))
 
-const rtcEnabled = process.env.CHAT_RTC_ENABLED === "true";
+const rtcEnabled = !!process.env.CHAT_RTC_ENABLED;
 const port = process.argv[2] || 8090;
 const http = require("http").Server(app);
 
