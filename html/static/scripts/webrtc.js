@@ -29,7 +29,7 @@ async function checkMediaDevices() {
     } else {
         console.debug('Client has no audio input device.');
         showError('No microphone found.');
-        setTimeout(checkMediaDevices, 500);
+        setTimeout(checkMediaDevices, 1000);
     }
 }
 
@@ -66,7 +66,7 @@ function waitForCondition(condition, callback) {
     if (condition()) {
         callback();
     } else {
-        setTimeout(() => waitForCondition(condition, callback), 500);
+        setTimeout(() => waitForCondition(condition, callback), 1000);
     }
 }
 
