@@ -7,6 +7,8 @@ const html = path.join(__dirname, '/html');
 app.use(express.static(html))
 
 const rtcEnabled = !!process.env.CHAT_RTC_ENABLED;
+console.log('WebRTC Signalling is', rtcEnabled ? 'enabled' : 'disabled');
+
 const port = process.argv[2] || 8090;
 const http = require("http").Server(app);
 
