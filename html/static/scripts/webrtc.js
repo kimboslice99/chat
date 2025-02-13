@@ -62,14 +62,6 @@ function showError(message) {
     }
 }
 
-function waitForCondition(condition, callback) {
-    if (condition()) {
-        callback();
-    } else {
-        setTimeout(() => waitForCondition(condition, callback), 1000);
-    }
-}
-
 function isRTCEnabled(callback) {
     socket.emit('is-rtc-enabled');
     socket.once('rtc-enabled', (enabled) => {
@@ -81,7 +73,7 @@ function isRTCEnabled(callback) {
 // then ask if server offers rtc signalling
 // additionally, we keep polling for microphone if none found, user may plug one in afterwards
 // we should handle the case where a client has changed microphones, perhaps? TODO
-waitForCondition(() => Chat.is_online, () => {
+document.addEventListener("chat-active", (e) => {
     isRTCEnabled((enabled) => {
         console.log('RTC Enabled:', enabled);
         if (enabled) {
