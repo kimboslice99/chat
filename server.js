@@ -6,7 +6,7 @@ const path = require('path')
 const html = path.join(__dirname, '/html');
 app.use(express.static(html))
 
-const rtcEnabled = !!process.env.CHAT_RTC_ENABLED;
+const signalingEnabled = !!process.env.CHAT_SIGNALING_ENABLED;
 console.log('WebRTC Signalling is', rtcEnabled ? 'enabled' : 'disabled');
 
 const port = process.argv[2] || 8090;
@@ -129,8 +129,8 @@ io.sockets.on("connection", function(socket){
 	});
 
 	// for clients to ask if server is offering rtc signalling.
-    socket.on('is-rtc-enabled', () => {
-        socket.emit('rtc-enabled', rtcEnabled);
+    socket.on('signaling-enabled', () => {
+        socket.emit('signaling-available', signalingEnabled);
     });
 
 	/* Client is ready for audio communication, inform all other clients in "main" */

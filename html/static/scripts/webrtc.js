@@ -1,6 +1,7 @@
 let localStream;
 const peerConnections = {};
 const iceCandidateQueues = {};
+let signalInitalized = false;
 let chatIsMuted = false;
 let hasMicrophone = false;
 const config = {
@@ -19,6 +20,7 @@ const config = {
 
 // Check for available audio input devices
 async function checkMediaDevices() {
+    // quick check to see if we have a mic to begin with
     const devices = await navigator.mediaDevices.enumerateDevices();
     hasMicrophone = devices.some(device => device.kind === 'audioinput');
 
@@ -37,15 +39,20 @@ async function checkMediaDevices() {
 async function getLocalStream() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // assign stream to localAudio so client can test own microphone.
+        // assign stream to localAudio, client can test own microphone.
         document.getElementById('localAudio').srcObject = stream;
         localStream = stream;
-        socket.emit('ready');
-        // show the controls since our client has a microphone and has allowed voice permission.
+        listenStreamEnded();
+        // emit ready unless mic reconnection.
+        if (!signalInitalized)
+            socket.emit('ready');
+
+        signalInitalized = true;
+        // show the controls, our client has microphone, allowed voice permission.
         document.getElementById('errorMsg').classList.add('display-none');
         document.getElementById('audioControls').classList.remove('display-none');
     } catch (error) {
-        // user denied access to microphone (or perhaps browser).
+        // denied access to microphone.
         console.error('Error accessing media devices.', error);
         showError('Error accessing microphone: ' + error.message);
     }
@@ -63,8 +70,8 @@ function showError(message) {
 }
 
 function isRTCEnabled(callback) {
-    socket.emit('is-rtc-enabled');
-    socket.once('rtc-enabled', (enabled) => {
+    socket.emit('signaling-enabled');
+    socket.once('signaling-available', (enabled) => {
         callback(enabled);
     });
 }
@@ -73,7 +80,7 @@ function isRTCEnabled(callback) {
 // then ask if server offers rtc signalling
 // additionally, we keep polling for microphone if none found, user may plug one in afterwards
 // we should handle the case where a client has changed microphones, perhaps? TODO
-document.addEventListener("chat-active", (e) => {
+document.addEventListener("chat-active", () => {
     isRTCEnabled((enabled) => {
         console.log('RTC Enabled:', enabled);
         if (enabled) {
@@ -200,11 +207,38 @@ socket.on('ul', (data) => {
     }
 });
 
+
+/**
+ * adds listener for audio input stream end event
+ * and fires an event we can reuse elsewhere.
+ * 
+ * @async
+ * @returns {*} 
+ */
+async function listenStreamEnded() {
+    const microphoneStopEvent = new Event('microphonestop');
+    const tracks = localStream.getAudioTracks();
+
+    for (const track of tracks) {
+      track.addEventListener('ended', () => {
+        window.dispatchEvent(microphoneStopEvent);
+      });
+    }
+}
+
+window.addEventListener('microphonestop', () => {
+    document.getElementById('audioControls').classList.add('display-none');
+    console.debug('Microphone lost.');
+    showError('No microphone found.');
+    // start waiting again
+    checkMediaDevices();
+});
+
 // For client to test their microphone.
 function toggleMicPlayback() {
     const localAudioElement = document.getElementById('localAudio');
     localAudioElement.muted = !localAudioElement.muted;
-    console.log(`Local microphone playback is ${localAudioElement.muted ? 'disabled' : 'enabled'}`);
+    console.debug(`Local microphone playback is ${localAudioElement.muted ? 'disabled' : 'enabled'}`);
 }
 
 function toggleMicMute() {
