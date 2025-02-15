@@ -71,8 +71,8 @@ function showError(message) {
 
 function isRTCEnabled(callback) {
     socket.emit('signaling-enabled');
-    socket.once('signaling-available', (enabled) => {
-        callback(enabled);
+    socket.once('signaling-available', (available) => {
+        callback(available);
     });
 }
 
