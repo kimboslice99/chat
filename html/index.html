@@ -28,15 +28,14 @@
 		</div>
 	</div>
 
-	<script type="text/javascript" src="socket.io/socket.io.js"></script>
 	<script type="text/javascript" src="static/scripts/emic.js"></script>
 	<script type="text/javascript" src="static/scripts/chat.js"></script>
 	<script type="text/javascript">
 		// optionally set own server where the client connects to
-		const socket = io(location.protocol + '//' + location.host, { path: location.pathname.replace(/\/$/, '') + '/socket.io/' })
+		const ws = new WebSocket("ws://" + document.location.host + "/ws");
 
 		Emic.init();
-		Chat.init(socket);
+		Chat.init(ws);
 	</script>
 </body>
 </html>

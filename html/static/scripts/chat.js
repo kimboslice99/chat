@@ -144,9 +144,9 @@ var Chat = {
 	},
 
 	send_msg: function(text){
-		Chat.socket.emit("send-msg", {
-			m: text
-		});
+		Chat.socket.send(
+			JSON.stringify({ event: "send-msg", data: { m: text }})
+		);
 	},
 
 	send_event: function(){
@@ -209,11 +209,11 @@ var Chat = {
 
 		update: function(){
 			if(Chat.is_typing && Chat.textarea.value === ""){
-				Chat.socket.emit("typing", Chat.is_typing = false);
+				Chat.socket.send(JSON.stringify({ event: "typing", data: Chat.is_typing = false}));
 			}
 
 			if(!Chat.is_typing && Chat.textarea.value !== ""){
-				Chat.socket.emit("typing", Chat.is_typing = true);
+				Chat.socket.send(JSON.stringify({event: 'typing', data: Chat.is_typing = true}));
 			}
 		}
 	},
@@ -344,17 +344,15 @@ var Chat = {
 		var nick = prompt("Your nick:", sessionStorage.nick || localStorage.nick || "");
 		if(typeof nick !== "undefined" && nick){
 			sessionStorage.nick = localStorage.nick = nick;
-			Chat.socket.emit("login", {
-				nick: nick
-			});
+			Chat.socket.send(JSON.stringify({event: "login", data: {nick: nick}}));
 		}
 	},
 
 	reload: function(){
 		if(typeof sessionStorage.nick !== "undefined" && sessionStorage.nick){
-			Chat.socket.emit("login", {
-				nick: sessionStorage.nick
-			});
+			Chat.socket.send(
+				JSON.stringify( { event: "login", data: { nick: sessionStorage.nick } } )
+			);
 		}
 	},
 
@@ -437,8 +435,8 @@ var Chat = {
 		// Set green favicon
 		Chat.notif.favicon('red');
 
-		// Connect to socket.io
-		Chat.socket = socket || io();
+		// Connect to websocket
+		Chat.socket = socket;
 
 		// Create beep object
 		Chat.notif.beep = Chat.notif.beep_create();
@@ -490,17 +488,54 @@ var Chat = {
 		Chat.textarea.onkeyup = Chat.typing.update;
 
 		// On socket events
-		Chat.socket.on("connect", Chat.connect);
-		Chat.socket.on("disconnect", Chat.disconnect);
+		Chat.socket.onopen = Chat.connect;
+		Chat.socket.onclose = Chat.disconnect;
 
-		Chat.socket.on("force-login", Chat.force_login);
-		Chat.socket.on("typing", Chat.typing.event);
-		Chat.socket.on("new-msg", Chat.new_msg);
-
-		Chat.socket.on("previous-msg", Chat.user.previous_messages)
-		Chat.socket.on("start", Chat.user.start);
-		Chat.socket.on("ue", Chat.user.enter);
-		Chat.socket.on("ul", Chat.user.leave);
+		Chat.socket.onmessage = function (e) {
+			let message;
+		
+			try {
+				message = JSON.parse(e.data);
+			} catch (error) {
+				console.error("Invalid JSON received:", e.data);
+				return;
+			}
+		
+			if (!message.event) {
+				console.error("Missing event field in message:", message);
+				return;
+			}
+		
+			//console.debug("Received event:", message.event, "with data:", message);
+		
+			// dispatch events
+			switch (message.event) {
+				case "force-login":
+					Chat.force_login(message.data);
+					break;
+				case "typing":
+					Chat.typing.event(message.data);
+					break;
+				case "new-msg":
+					Chat.new_msg(message.data);
+					break;
+				case "previous-msg":
+					Chat.user.previous_messages(message);
+					break;
+				case "start":
+					console.debug(message);
+					Chat.user.start(message.data);
+					break;
+				case "ue": // User entered
+					Chat.user.enter(message.data);
+					break;
+				case "ul": // User left
+					Chat.user.leave(message.data);
+					break;
+				default:
+					console.warn("Unknown event:", message.event);
+			}
+		};		
 
 		var dropZone = document.getElementsByTagName("body")[0];
 
@@ -546,7 +581,7 @@ var Chat = {
 			if(!Chat.is_online){
 				return;
 			}
-			Chat.socket.disconnect();
+			Chat.socket.close();
 		});
 	}
 };
