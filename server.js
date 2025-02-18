@@ -135,7 +135,7 @@ io.sockets.on("connection", function(socket){
 
 	/* Client is ready for audio communication, inform all other clients in "main" */
 	socket.on('ready', () => {
-		if (rtcEnabled){
+		if (signalingEnabled){
 			if (nick != null){
 				console.log('ready', nick, socket.id);
 				socket.to("main").emit('user-ready', socket.id);
@@ -145,7 +145,7 @@ io.sockets.on("connection", function(socket){
 
 	/* Client has given us signal for peer */
 	socket.on('signal', (data) => {
-		if (rtcEnabled){
+		if (signalingEnabled){
 			if (!nick || !data || !data.target || !data.signal) {
 				console.log('Invalid signal received from', socket.id);
 				return;
