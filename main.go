@@ -16,8 +16,8 @@ var address = flag.String("bind", ":8090", "bind service to address.")
 var logLevel = flag.String("log", "INFO", "Log level (DEBUG, INFO, ERROR).")
 var cache = flag.Int("cache", 0, "Message cache size.")
 var maxMessageSize = flag.Int64("readlimit", 1, "Maximum message size in MB.")
-var certFile = flag.String("pubkey", "", "Path to a TLS certificate.")
-var keyFile = flag.String("privkey", "", "Path to a private key path.")
+var certFile = flag.String("certfile", "", "Path to a TLS certificate.")
+var keyFile = flag.String("keyfile", "", "Path to a private key path.")
 var signalingEnabled = flag.Bool("signaling", false, "Advertise to client, we provide RTC signaling.")
 
 var userlist []string          // list of users.

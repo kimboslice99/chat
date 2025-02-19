@@ -24,10 +24,10 @@ Usage:
         Message cache size. (default 0)
   -log string
         Log level (DEBUG, INFO, ERROR). (default "INFO")
-  -privkey string
-        Path to a private key path.
-  -pubkey string
+  -certfile string
         Path to a TLS certificate.
+  -keyfile string
+        Path to a private key path.
   -readlimit int
         Maximum message size in MB. (default 1)
   -signaling
