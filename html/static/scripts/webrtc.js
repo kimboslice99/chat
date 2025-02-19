@@ -31,6 +31,7 @@ async function checkMediaDevices() {
     } else {
         console.debug('Client has no audio input device.');
         showError('No microphone found.');
+        // poll
         setTimeout(checkMediaDevices, 1000);
     }
 }
@@ -45,7 +46,7 @@ async function getLocalStream() {
         listenStreamEnded();
         // emit ready unless mic reconnection.
         if (!signalInitalized)
-            socket.emit('ready');
+            ws.send(JSON.stringify({ event: 'ready' }));
 
         signalInitalized = true;
         // show the controls, our client has microphone, allowed voice permission.
@@ -69,25 +70,19 @@ function showError(message) {
     }
 }
 
-function isRTCEnabled(callback) {
-    socket.emit('signaling-enabled');
-    socket.once('signaling-available', (available) => {
-        callback(available);
-    });
-}
-
 // Wait for Chat to be online
-// then ask if server offers rtc signalling
+// then ask if server offers rtc signaling
 // additionally, we keep polling for microphone if none found, user may plug one in afterwards
 // we should handle the case where a client has changed microphones, perhaps? TODO
-document.addEventListener("chat-active", () => {
-    isRTCEnabled((enabled) => {
-        console.log('RTC Enabled:', enabled);
-        if (enabled) {
-            checkMediaDevices();
-        }
-    });
+window.addEventListener("chat-active", function() {
+    ws.send(JSON.stringify({ event: "signaling-enabled" }));
 });
+
+window.addEventListener("signaling-available", function(event) {
+    console.info(event.data === true ? "Server offers RTC Signaling" : "Server does not offer RTC signaling");
+    if (event.data === true)
+        checkMediaDevices();
+})
 
 /**
  * Creates a new RTCPeerConnection for a given peer ID and manages media tracks, remote streams, and ICE candidates.
@@ -120,22 +115,25 @@ function createPeerConnection(id) {
     // Handle ICE candidates
     peerConnections[id].onicecandidate = (event) => {
         if (event.candidate) {
-            socket.emit('signal', { target: id, signal: { candidate: event.candidate } });
+            ws.send(JSON.stringify({ event: 'signal', data: { target: id, signal: { candidate: event.candidate } } }));
         }
     };
 }
 
 // Handle signaling messages
-socket.on('signal', async (data) => {
-    const { from, signal } = data; // Extract sender ID and signal data
+window.addEventListener("signal", async (event) => {
+    console.debug('signal received with data:', event.data);
+    const { from, signal } = event.data; // Extract sender ID and signal data
 
     // Check if we've already established a peer connection with this client
     if (!peerConnections[from]) {
         createPeerConnection(from); // Create a new peer connection if it doesn't exist
+        console.debug('Added peer connection for:', from);
     }
 
     // If the signal contains an SDP (Session Description Protocol) message
     if (signal.sdp) {
+        console.debug('Recieved sdp signal');
         await peerConnections[from].setRemoteDescription(new RTCSessionDescription(signal.sdp));
 
         // If the received SDP is an offer, respond with an answer
@@ -144,7 +142,7 @@ socket.on('signal', async (data) => {
             await peerConnections[from].setLocalDescription(answer); // Set the local description with the answer
 
             // Send the answer back to the originating peer
-            socket.emit('signal', { target: from, signal: { sdp: peerConnections[from].localDescription } });
+            ws.send(JSON.stringify({ event: 'signal', data: { target: from, signal: { sdp: peerConnections[from].localDescription } }}));
         }
 
         // Add any ICE candidates that were queued while waiting for the remote description
@@ -159,6 +157,7 @@ socket.on('signal', async (data) => {
     }
     // If the signal contains an ICE candidate
     else if (signal.candidate) {
+        console.debug('Signal recieved was candidate');
         // If the remote description is already set, add the ICE candidate immediately
         if (peerConnections[from].remoteDescription) {
             await peerConnections[from].addIceCandidate(new RTCIceCandidate(signal.candidate));
@@ -173,7 +172,9 @@ socket.on('signal', async (data) => {
 });
 
 // Handle when a new user is ready to connect
-socket.on('user-ready', (id) => {
+window.addEventListener("user-ready", (event) => {
+    console.debug('user-ready fired for id', event.id);
+    const id = event.id;
     // Check if we already have a peer connection with this user; if not, create one
     if (!peerConnections[id]) {
         createPeerConnection(id);
@@ -186,13 +187,14 @@ socket.on('user-ready', (id) => {
         })
         .then(() => {
             // Send the offer to the new user via signaling
-            socket.emit('signal', { target: id, signal: { sdp: peerConnections[id].localDescription } });
+            ws.send(JSON.stringify({ event: 'signal', data: { target: id, signal: { sdp: peerConnections[id].localDescription } } }));
         })
         .catch(console.error); // Log any errors that occur during the process
 });
 
 // Handle user disconnected
-socket.on('ul', (data) => {
+window.addEventListener('ul', (data) => {
+    console.debug("webrtc ul event", data);
     const { nick, id } = data;
 
     if (peerConnections[id]) {

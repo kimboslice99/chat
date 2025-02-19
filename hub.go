@@ -11,7 +11,7 @@ package main
 // clients.
 type Hub struct {
 	// Registered clients.
-	clients map[*Client]bool
+	clients map[string]*Client
 
 	// Inbound messages from the clients.
 	broadcast chan []byte
@@ -28,7 +28,7 @@ func newHub() *Hub {
 		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+		clients:    make(map[string]*Client),
 	}
 }
 
@@ -36,21 +36,27 @@ func (h *Hub) run() {
 	for {
 		select {
 		case client := <-h.register:
-			h.clients[client] = true
+			// Register a new client
+			h.clients[client.id] = client // Use the client's unique ID as the key
+			logger("DEBUG", "Client connected:", client.id)
 
 		case client := <-h.unregister:
-			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
+			// Remove client on disconnect
+			if _, ok := h.clients[client.id]; ok {
+				delete(h.clients, client.id)
 				close(client.send)
+				logger("DEBUG", "Client disconnected:", client.id)
 			}
 
 		case message := <-h.broadcast:
-			for client := range h.clients {
+			// Broadcast messages to all clients
+			for _, client := range h.clients {
 				select {
 				case client.send <- message:
 				default:
+					// If client buffer is full, remove it
 					close(client.send)
-					delete(h.clients, client)
+					delete(h.clients, client.id)
 				}
 			}
 		}

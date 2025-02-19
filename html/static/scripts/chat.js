@@ -344,19 +344,15 @@ var Chat = {
 		var nick = prompt("Your nick:", sessionStorage.nick || localStorage.nick || "");
 		if(typeof nick !== "undefined" && nick){
 			sessionStorage.nick = localStorage.nick = nick;
-			Chat.socket.emit("login", {
-				nick: nick
-			});
-			Chat.socket.send(JSON.stringify({event: "login", data: {nick: nick}}));
+			ws.send(
+				JSON.stringify( { event: "login", data: { nick: nick } } )
+			);
 		}
 	},
 
 	reload: function(){
 		if(typeof sessionStorage.nick !== "undefined" && sessionStorage.nick){
-			Chat.socket.emit("login", {
-				nick: sessionStorage.nick
-			});
-			Chat.socket.send(
+			ws.send(
 				JSON.stringify( { event: "login", data: { nick: sessionStorage.nick } } )
 			);
 		}
@@ -367,8 +363,6 @@ var Chat = {
 
 		// Load all users
 		start: function(r){
-			const event = new CustomEvent("chat-active");
-			document.dispatchEvent(event);
 			Chat.users.innerText = '';
 
 			for(var user in r.users){
@@ -380,7 +374,7 @@ var Chat = {
 		},
 
 		previous_messages: function(data){
-			console.log(`msgs: ${data}`)
+			console.log(`msgs:`, JSON.stringify(data))
 
 			data.msgs.forEach(element => {
 				Chat.new_msg(element)
@@ -531,14 +525,33 @@ var Chat = {
 					Chat.user.previous_messages(message);
 					break;
 				case "start":
-					console.debug(message);
 					Chat.user.start(message.data);
+					const event = new CustomEvent("chat-active");
+					window.dispatchEvent(event);
 					break;
 				case "ue": // User entered
 					Chat.user.enter(message.data);
 					break;
 				case "ul": // User left
 					Chat.user.leave(message.data);
+					const userLeft = new CustomEvent("ul");
+					userLeft.data = message.data;
+					window.dispatchEvent(userLeft);
+					break;
+				case "signaling-available":
+					const signalEnabled = new CustomEvent("signaling-available");
+					signalEnabled.data = message.data;
+					window.dispatchEvent(signalEnabled);
+					break;
+				case "user-ready":
+					const userReadyEvent = new CustomEvent("user-ready");
+					userReadyEvent.id = message.data;
+					window.dispatchEvent(userReadyEvent);
+					break;
+				case "signal":
+					const signalEvent = new CustomEvent("signal");
+					signalEvent.data = message.data;
+					window.dispatchEvent(signalEvent);
 					break;
 				default:
 					console.warn("Unknown event:", message.event);

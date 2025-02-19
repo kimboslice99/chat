@@ -51,7 +51,8 @@
 	<script type="text/javascript" src="static/scripts/chat.js"></script>
 	<script type="text/javascript">
 		// optionally set own server where the client connects to
-		const ws = new WebSocket("ws://" + document.location.host + "/ws");
+		const proto = document.location.protocol === "http:" ? "ws://" : "wss://";
+		const ws = new WebSocket(proto + document.location.host + "/ws");
 
 		Emic.init();
 		Chat.init(ws);

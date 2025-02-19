@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/fasthttp/websocket"
+	"github.com/google/uuid"
 )
 
 const (
@@ -41,6 +42,7 @@ type Client struct {
 	send   chan []byte
 	events *EventManager
 	nick   string
+	id     string
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -146,6 +148,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request, events *EventMana
 		conn:   conn,
 		send:   make(chan []byte, 256),
 		events: events,
+		id:     uuid.NewString(),
 	}
 	client.hub.register <- client
 

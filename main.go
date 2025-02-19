@@ -18,6 +18,7 @@ var cache = flag.Int("cache", 0, "Message cache size.")
 var maxMessageSize = flag.Int64("readlimit", 1, "Maximum message size in MB.")
 var certFile = flag.String("pubkey", "", "Path to a TLS certificate.")
 var keyFile = flag.String("privkey", "", "Path to a private key path.")
+var signalingEnabled = flag.Bool("signaling", true, "Advertise to client, we provide RTC signaling.")
 
 var userlist []string          // list of users.
 var msgid int = 1              // message id.
@@ -95,12 +96,11 @@ func main() {
 		// save nick.
 		c.nick = loginData.Nick
 		// emit to everyone except "user".
-		for v := range c.hub.clients {
-			if v != c {
-				v.send <- userEnteredJSON
+		for _, client := range c.hub.clients {
+			if client != c && client.nick != "" {
+				client.send <- userEnteredJSON
 			}
 		}
-
 		// send message cache to "user".
 		cacheEvent := MessageCacheResponse{
 			Event: "previous-msg",
@@ -131,15 +131,7 @@ func main() {
 
 		logger("DEBUG", "Raw data received:", string(data[:]))
 		// structure to decode the incoming message.
-		var incomingMessage struct {
-			M struct {
-				Text string `json:"text"`
-				Type string `json:"type"`
-				Name string `json:"name"`
-				Url  string `json:"url"`
-			} `json:"m"`
-		}
-
+		var incomingMessage MessageData
 		if err := json.Unmarshal(data, &incomingMessage); err != nil {
 			logger("ERROR", "Failed to parse message data:", err)
 			return
@@ -162,10 +154,10 @@ func main() {
 
 		if newMessageJSON, err := json.Marshal(outgoingMessage); err == nil {
 			logger("DEBUG", "send-msg event triggered for:", c.nick)
-			// broadcast to all, except clients without nick.
-			for c := range c.hub.clients {
-				if c.nick != "" {
-					c.send <- newMessageJSON
+			// broadcast to all, except clients without nick
+			for _, client := range c.hub.clients {
+				if client.nick != "" {
+					client.send <- newMessageJSON
 				}
 			}
 			// adds message to cache, pushes out old messages over limit.
@@ -205,9 +197,9 @@ func main() {
 		}
 
 		// Broadcast to all clients except the sender.
-		for v := range c.hub.clients {
-			if v != c {
-				v.send <- typingJSON
+		for _, client := range c.hub.clients {
+			if client != c && client.nick != "" {
+				client.send <- typingJSON
 			}
 		}
 
@@ -250,6 +242,89 @@ func main() {
 			c.hub.unregister <- c
 
 			logger("DEBUG", "Removed", c.nick, "from userlist")
+		}
+	})
+
+	events.On("signaling-enabled", func(c *Client, data []byte) {
+		if c.nick != "" {
+			availableEvent := MessageEvent{
+				Event: "signaling-available",
+				Data:  signalingEnabled,
+			}
+
+			availableJson, err := json.Marshal(availableEvent)
+			if err != nil {
+				logger("ERROR", "Failed to encode signaling-available event:", err)
+				return
+			}
+
+			logger("DEBUG", "Signaling available response sent:", string(availableJson))
+			c.send <- availableJson
+		}
+	})
+
+	events.On("ready", func(c *Client, data []byte) {
+		if c.nick != "" && *signalingEnabled {
+			readyEvent := MessageEvent{
+				Event: "user-ready",
+				Data:  c.id,
+			}
+
+			readyJson, err := json.Marshal(readyEvent)
+			if err != nil {
+				logger("ERROR", "Failed to encode user-ready event:", err)
+				return
+			}
+
+			logger("DEBUG", "user-ready response sent:", string(readyJson))
+			c.hub.broadcast <- readyJson
+		}
+	})
+
+	events.On("signal", func(c *Client, data []byte) {
+		if c.nick == "" || !*signalingEnabled {
+			return
+		}
+
+		// decode the signal received from the client
+		var signalingData SignalingData
+		err := json.Unmarshal(data, &signalingData)
+		if err != nil || signalingData.Target == "" || (signalingData.Signal == Signal{}) {
+			logger("ERROR", "Invalid signal received from", c.id)
+			return
+		}
+
+		signalResponse := map[string]interface{}{
+			"from":   c.id,
+			"signal": signalingData.Signal,
+		}
+
+		signalEvent := MessageEvent{
+			Event: "signal",
+			Data:  signalResponse,
+		}
+
+		signalResponseJson, err := json.Marshal(signalEvent)
+		if err != nil {
+			logger("ERROR", "Failed to encode signal for", signalingData.Target)
+			return
+		}
+
+		// Check if the target client exists before sending.
+		targetClient, exists := c.hub.clients[signalingData.Target]
+		if !exists {
+			logger("ERROR", "Target client not found:", signalingData.Target)
+			return
+		}
+
+		logger("DEBUG", "Sending signal to:", signalingData.Target, "from:", c.id)
+
+		// Attempt to send the signal to the target client.
+		select {
+		case targetClient.send <- signalResponseJson:
+			// Successfully sent
+		default:
+			logger("ERROR", "Failed to send signal to:", signalingData.Target)
 		}
 	})
 
