@@ -173,22 +173,23 @@ socket.on('signal', async (data) => {
 });
 
 // Handle when a new user is ready to connect
-socket.on('user-ready', (id) => {
+socket.on('user-ready', async (id) => {
     // Check if we already have a peer connection with this user; if not, create one
     if (!peerConnections[id]) {
         createPeerConnection(id);
     }
 
-    // Create an SDP offer to initiate the WebRTC connection
-    peerConnections[id].createOffer()
-        .then((offer) => {
-            return peerConnections[id].setLocalDescription(offer); // Set the local SDP description
-        })
-        .then(() => {
-            // Send the offer to the new user via signaling
-            socket.emit('signal', { target: id, signal: { sdp: peerConnections[id].localDescription } });
-        })
-        .catch(console.error); // Log any errors that occur during the process
+    try {
+        const offer = await peerConnections[id].createOffer();
+        await peerConnections[id].setLocalDescription(offer);
+
+        ws.send(JSON.stringify({
+            event: 'signal',
+            data: { target: id, signal: { sdp: peerConnections[id].localDescription } }
+        }));
+    } catch (error) {
+        console.error(error);
+    }
 });
 
 // Handle user disconnected
