@@ -1,5 +1,5 @@
-# chat
-Simple plug & play real-time JavaScript chat implemented using Socket.io.
+# Chat
+A simple plug & play real-time JavaScript chat server, now ported to Golang for better performance and compatibility with embedded devices.
 
 Where simplicity meets usability:
 
@@ -12,44 +12,34 @@ Where simplicity meets usability:
 
 ![screenshot](https://raw.githubusercontent.com/m1k1o/chat/master/screenshot.png)
 
-## docker
+## Configuration
 
-```sh
-docker run -d \
-	--name chat \
-	-p 80:80 \
-	m1k1o/chat:latest
+The server accepts the following command-line arguments:
+
+```plain
+Usage:
+  -bind string
+        bind service to address. (default ":8090")
+  -cache int
+        Message cache size. (default 0)
+  -log string
+        Log level (DEBUG, INFO, ERROR). (default "INFO")
+  -privkey string
+        Path to a private key path.
+  -pubkey string
+        Path to a TLS certificate.
+  -readlimit int
+        Maximum message size in MB. (default 1)
+  -signaling
+        Advertise to client, we provide RTC signaling. (default false)
 ```
 
-## docker-compose
+## How to build
 
-```yml
-version: "3"
-services:
-  chat:
-    image: m1k1o/chat:latest
-    restart: unless-stopped
-    ports:
-      - 80:80
-    environment:
-      CACHE_SIZE: 50 # optional: message count stored. Defaults to zero.
- ```
-
-## Cache
-`CACHE_SIZE` is optional and determines the number of messages stored on the server. When new users join (or reconnect), that cache is sent to give a brief history. This defaults to zero, but can be set as an environment variable.
-
-If you're not running in a docker container, you can make a `.env` file in the project root with `CACHE_SIZE=50` in.
-
-Note: This cache will be text or images so be mindful not to set it too high as it could be n images sent to every new user.
-
-## How to install
-
-Requirements: `nodejs`, `npm`
-
-1. Clone this repository.
-	- `git clone https://github.com/m1k1o/chat .`
-2. Install server dependencies.
-	- `npm install`
-3. Run server (default port is `80`).
-	- `npm start [custom_port]`
-4. Done, visit your chat in browser.
+```cmd
+git clone https://github.com/kimboslice99/chat
+cd chat
+go mod tidy
+go build
+./chat
+```

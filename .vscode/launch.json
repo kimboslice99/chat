@@ -1,20 +1,13 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    // go install github.com/go-delve/delve/cmd/dlv@latest
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "node",
+            "type": "go",
             "request": "launch",
-            "name": "Launch chat",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "program": "${workspaceFolder}/server.js",
-            "env": {
-              "CHAT_SIGNALING_ENABLED": "true"
-            }
+            "name": "Launch chat (go run)",
+            "mode": "auto",
+            "program": "${workspaceFolder}"
         }
     ]
 }
