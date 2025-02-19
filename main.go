@@ -18,7 +18,7 @@ var cache = flag.Int("cache", 0, "Message cache size.")
 var maxMessageSize = flag.Int64("readlimit", 1, "Maximum message size in MB.")
 var certFile = flag.String("pubkey", "", "Path to a TLS certificate.")
 var keyFile = flag.String("privkey", "", "Path to a private key path.")
-var signalingEnabled = flag.Bool("signaling", true, "Advertise to client, we provide RTC signaling.")
+var signalingEnabled = flag.Bool("signaling", false, "Advertise to client, we provide RTC signaling.")
 
 var userlist []string          // list of users.
 var msgid int = 1              // message id.
