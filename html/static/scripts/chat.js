@@ -408,6 +408,14 @@ var Chat = {
 	},
 
 	connect: function(){
+		// while websocket protocol does have ping/pong, some proxies may still close conn on us! Looking at you Cloudflare!
+		setInterval(() => {
+			if (Chat.socket.readyState === WebSocket.OPEN) {
+				Chat.socket.send(JSON.stringify({ event: "ping" }));
+				console.debug('Sending ping to server');
+			}
+		}, 30000);
+
 		// Set green favicon
 		Chat.notif.favicon('green');
 		Chat.is_online = true;
@@ -537,6 +545,9 @@ var Chat = {
 					const userLeft = new CustomEvent("ul");
 					userLeft.data = message.data;
 					window.dispatchEvent(userLeft);
+					break;
+				case "pong":
+					console.debug('Received pong from server, all is well.', message);
 					break;
 				case "signaling-available":
 					const signalEnabled = new CustomEvent("signaling-available");

@@ -34,7 +34,7 @@ type MessageCacheResponse struct {
 // for encoding, we dont need type assertion, but for decoding, we do.
 type MessageEvent struct {
 	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
+	Data  interface{} `json:"data,omitempty"`
 }
 
 type EventData struct {
@@ -43,6 +43,7 @@ type EventData struct {
 	Nick   string   `json:"nick,omitempty"`
 }
 
+// TODO, probably ditch this struct
 type Event struct {
 	Event string    `json:"event"`
 	Data  EventData `json:"data"`

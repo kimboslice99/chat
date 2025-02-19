@@ -245,6 +245,20 @@ func main() {
 		}
 	})
 
+	events.On("ping", func(c *Client, data []byte) {
+		pingResponse := MessageEvent{
+			Event: "pong",
+		}
+		pingJson, err := json.Marshal(pingResponse)
+		if err != nil {
+			logger("ERROR", "Failed to encode ping response")
+			return
+		}
+
+		logger("DEBUG", "Pong response sent", string(pingJson))
+		c.send <- pingJson
+	})
+
 	events.On("signaling-enabled", func(c *Client, data []byte) {
 		if c.nick != "" {
 			availableEvent := MessageEvent{
@@ -277,6 +291,7 @@ func main() {
 			}
 
 			logger("DEBUG", "user-ready response sent:", string(readyJson))
+			// tell everyone "user" is ready for signaling
 			c.hub.broadcast <- readyJson
 		}
 	})

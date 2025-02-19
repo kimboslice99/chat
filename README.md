@@ -1,4 +1,5 @@
 # Chat
+
 A simple plug & play real-time JavaScript chat server, now ported to Golang for better performance and compatibility with embedded devices.
 
 Where simplicity meets usability:

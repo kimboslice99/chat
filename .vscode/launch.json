@@ -7,7 +7,8 @@
             "request": "launch",
             "name": "Launch chat (go run)",
             "mode": "auto",
-            "program": "${workspaceFolder}"
+            "program": "${workspaceFolder}",
+            "args": ["-signaling", "-log \"DEBUG\""],
         }
     ]
 }
