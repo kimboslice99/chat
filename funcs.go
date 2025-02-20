@@ -1,6 +1,7 @@
 // File: funcs.go - Miscellaneous functions
 // Author: @kimboslice99
 // Created: 2025-02-15
+// License: GNU General Public License v3.0 (GPLv3)
 
 package main
 
@@ -46,7 +47,7 @@ func checkIfUserIn(name string) bool {
 
 // forceLogin; sends client a force-login event.
 func forceLogin(c *Client, message string) {
-	forceLogin := MessageEvent{
+	forceLogin := Event{
 		Event: "force-login",
 		Data:  message,
 	}

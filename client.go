@@ -69,13 +69,14 @@ func (c *Client) readPump() {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				logger("ERROR", err)
 			}
+			// emit disconnect event
 			if c.events != nil {
 				c.events.Emit("disconnect", c, nil)
 			}
 			break
 		}
 
-		// Parse message into JSON
+		// Parse the event, leave the data for our handler
 		var message struct {
 			Event string          `json:"event"`
 			Data  json.RawMessage `json:"data"`

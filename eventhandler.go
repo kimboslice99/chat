@@ -1,3 +1,8 @@
+// File: eventhandler.go - A custom handler to make main feel more familiar to Socket.IO
+// Author: @kimboslice99
+// Created: 2025-02-15
+// License: GNU General Public License v3.0 (GPLv3)
+
 package main
 
 type EventHandler func(client *Client, data []byte)
@@ -17,6 +22,7 @@ func (em *EventManager) On(event string, handler EventHandler) {
 	em.handlers[event] = handler
 }
 
+// so we can call our own registered events
 func (em *EventManager) Emit(event string, client *Client, data []byte) {
 	if handler, found := em.handlers[event]; found {
 		handler(client, data)

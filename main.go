@@ -1,7 +1,7 @@
 // File: main.go - Entry point for the chat server
 // Author: @kimboslice99
 // Created: 2025-02-15
-// License: GPLv3
+// License: GNU General Public License v3.0 (GPLv3)
 
 package main
 
@@ -145,7 +145,7 @@ func main() {
 			M:    incomingMessage.M,
 		}
 
-		outgoingMessage := MessageDataEvent{
+		outgoingMessage := Event{
 			Event: "new-msg",
 			Data:  msgData,
 		}
@@ -246,7 +246,7 @@ func main() {
 	})
 
 	events.On("ping", func(c *Client, data []byte) {
-		pingResponse := MessageEvent{
+		pingResponse := Event{
 			Event: "pong",
 		}
 		pingJson, err := json.Marshal(pingResponse)
@@ -261,7 +261,7 @@ func main() {
 
 	events.On("signaling-enabled", func(c *Client, data []byte) {
 		if c.nick != "" {
-			availableEvent := MessageEvent{
+			availableEvent := Event{
 				Event: "signaling-available",
 				Data:  signalingEnabled,
 			}
@@ -279,7 +279,7 @@ func main() {
 
 	events.On("ready", func(c *Client, data []byte) {
 		if c.nick != "" && *signalingEnabled {
-			readyEvent := MessageEvent{
+			readyEvent := Event{
 				Event: "user-ready",
 				Data:  c.id,
 			}
@@ -314,7 +314,7 @@ func main() {
 			"signal": signalingData.Signal,
 		}
 
-		signalEvent := MessageEvent{
+		signalEvent := Event{
 			Event: "signal",
 			Data:  signalResponse,
 		}

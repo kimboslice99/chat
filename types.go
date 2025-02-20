@@ -1,6 +1,7 @@
 // File: types.go - Structures used to decode/encode JSON data for WebSocket communication
 // Author: @kimboslice99
 // Created: 2025-02-15
+// License: GNU General Public License v3.0 (GPLv3)
 // Description:
 //  - This file contains the data structures used for encoding and decoding JSON messages.
 //  - These structures are used for WebSocket communication between the server and clients.
@@ -21,18 +22,13 @@ type MessageData struct {
 	M    Message `json:"m"`
 }
 
-type MessageDataEvent struct {
-	Event string      `json:"event"`
-	Data  MessageData `json:"data"`
-}
-
 type MessageCacheResponse struct {
 	Event string        `json:"event"`
 	Msgs  []MessageData `json:"msgs"`
 }
 
 // for encoding, we dont need type assertion, but for decoding, we do.
-type MessageEvent struct {
+type Event struct {
 	Event string      `json:"event"`
 	Data  interface{} `json:"data,omitempty"`
 }
@@ -41,12 +37,6 @@ type EventData struct {
 	Users  []string `json:"users,omitempty"`
 	Status bool     `json:"status,omitempty"`
 	Nick   string   `json:"nick,omitempty"`
-}
-
-// TODO, probably ditch this struct
-type Event struct {
-	Event string    `json:"event"`
-	Data  EventData `json:"data"`
 }
 
 // structures for WebRTC signaling.
