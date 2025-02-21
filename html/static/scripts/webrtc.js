@@ -20,7 +20,7 @@ const config = {
 
 // Check for available audio input devices
 async function checkMediaDevices() {
-    // quick check to see if we have a mic to begin with
+    // quick check to see if we have a mic to begin with, will throw exception on plain http.
     const devices = await navigator.mediaDevices.enumerateDevices();
     hasMicrophone = devices.some(device => device.kind === 'audioinput');
 
@@ -46,7 +46,7 @@ async function getLocalStream() {
         listenStreamEnded();
         // emit ready unless mic reconnection.
         if (!signalInitalized)
-            ws.send(JSON.stringify({ event: 'ready' }));
+            Chat.send( { event: 'ready' } );
 
         signalInitalized = true;
         // show the controls, our client has microphone, allowed voice permission.
@@ -75,7 +75,7 @@ function showError(message) {
 // additionally, we keep polling for microphone if none found, user may plug one in afterwards
 // we should handle the case where a client has changed microphones, perhaps? TODO
 window.addEventListener("chat-active", function() {
-    ws.send(JSON.stringify({ event: "signaling-enabled" }));
+    Chat.send({ event: "signaling-enabled" });
 });
 
 window.addEventListener("signaling-available", function(event) {
@@ -115,7 +115,7 @@ function createPeerConnection(id) {
     // Handle ICE candidates
     peerConnections[id].onicecandidate = (event) => {
         if (event.candidate) {
-            ws.send(JSON.stringify({ event: 'signal', data: { target: id, signal: { candidate: event.candidate } } }));
+            Chat.send({ event: 'signal', data: { target: id, signal: { candidate: event.candidate } } });
         }
     };
 }
@@ -142,7 +142,7 @@ window.addEventListener("signal", async (event) => {
             await peerConnections[from].setLocalDescription(answer); // Set the local description with the answer
 
             // Send the answer back to the originating peer
-            ws.send(JSON.stringify({ event: 'signal', data: { target: from, signal: { sdp: peerConnections[from].localDescription } }}));
+            chat.send({ event: 'signal', data: { target: from, signal: { sdp: peerConnections[from].localDescription } } });
         }
 
         // Add any ICE candidates that were queued while waiting for the remote description
@@ -183,10 +183,10 @@ window.addEventListener("user-ready", async (event) => {
         const offer = await peerConnections[id].createOffer();
         await peerConnections[id].setLocalDescription(offer);
 
-        ws.send(JSON.stringify({
+        Chat.send({
             event: 'signal',
             data: { target: id, signal: { sdp: peerConnections[id].localDescription } }
-        }));
+        });
     } catch (error) {
         console.error(error);
     }

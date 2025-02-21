@@ -9,6 +9,19 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             "args": ["-signaling", "-log", "\"DEBUG\""],
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome",
+            "url": "http://localhost:8090",
+            "webRoot": "${workspaceFolder}",
+            "runtimeArgs": [
+            "--remote-debugging-port=9222",
+            "--incognito",
+            "--disable-extensions"
+            ],
+            "userDataDir": "${workspaceFolder}/.vscode/chrome-debug"
         }
     ]
 }

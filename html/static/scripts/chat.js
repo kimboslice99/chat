@@ -1,5 +1,6 @@
 var Chat = {
 	socket: null,
+	url: null,
 
 	loading: document.getElementById("loading"),
 	chat_box: document.getElementById("chat-box"),
@@ -144,9 +145,7 @@ var Chat = {
 	},
 
 	send_msg: function(text){
-		Chat.socket.send(
-			JSON.stringify({ event: "send-msg", data: { m: text }})
-		);
+		Chat.send( { event: "send-msg", data: { m: text }} );
 	},
 
 	send_event: function(){
@@ -209,11 +208,11 @@ var Chat = {
 
 		update: function(){
 			if(Chat.is_typing && Chat.textarea.value === ""){
-				Chat.socket.send(JSON.stringify({ event: "typing", data: Chat.is_typing = false}));
+				Chat.send({ event: "typing", data: Chat.is_typing = false});
 			}
 
 			if(!Chat.is_typing && Chat.textarea.value !== ""){
-				Chat.socket.send(JSON.stringify({event: 'typing', data: Chat.is_typing = true}));
+				Chat.send({event: 'typing', data: Chat.is_typing = true});
 			}
 		}
 	},
@@ -344,17 +343,15 @@ var Chat = {
 		var nick = prompt("Your nick:", sessionStorage.nick || localStorage.nick || "");
 		if(typeof nick !== "undefined" && nick){
 			sessionStorage.nick = localStorage.nick = nick;
-			ws.send(
-				JSON.stringify( { event: "login", data: { nick: nick } } )
-			);
+			let data = { event: "login", data: { nick: nick } }
+			Chat.send(data);
 		}
 	},
 
 	reload: function(){
 		if(typeof sessionStorage.nick !== "undefined" && sessionStorage.nick){
-			ws.send(
-				JSON.stringify( { event: "login", data: { nick: sessionStorage.nick } } )
-			);
+			let data = { event: "login", data: { nick: sessionStorage.nick } }
+			Chat.send(data);
 		}
 	},
 
@@ -408,14 +405,7 @@ var Chat = {
 	},
 
 	connect: function(){
-		// while websocket protocol does have ping/pong, some proxies may still close conn on us! Looking at you Cloudflare!
-		setInterval(() => {
-			if (Chat.socket.readyState === WebSocket.OPEN) {
-				Chat.socket.send(JSON.stringify({ event: "ping" }));
-				console.debug('Sending ping to server');
-			}
-		}, 30000);
-
+		console.debug('connect called!');
 		// Set green favicon
 		Chat.notif.favicon('green');
 		Chat.is_online = true;
@@ -441,12 +431,12 @@ var Chat = {
 		Chat.users.innerText = '';
 	},
 
-	init: function(socket){
+	init: function(url){
+		Chat.url = url;
+		Chat.socket = new WebSocket(url);
+		Chat.socketlisteners();
 		// Set green favicon
 		Chat.notif.favicon('red');
-
-		// Connect to websocket
-		Chat.socket = socket;
 
 		// Create beep object
 		Chat.notif.beep = Chat.notif.beep_create();
@@ -497,11 +487,61 @@ var Chat = {
 		// Check if is user typing
 		Chat.textarea.onkeyup = Chat.typing.update;
 
-		// On socket events
-		Chat.socket.onopen = Chat.connect;
-		Chat.socket.onclose = Chat.disconnect;
+		var dropZone = document.getElementsByTagName("body")[0];
 
-		Chat.socket.onmessage = function (e) {
+		// Optional. Show the copy icon when dragging over. Seems to only work for chrome.
+		dropZone.addEventListener('dragover', function(e){
+			e.stopPropagation();
+			e.preventDefault();
+
+			e.dataTransfer.dropEffect = 'copy';
+		});
+
+		// Get file data on drop
+		dropZone.addEventListener('drop', function(e){
+			e.stopPropagation();
+			e.preventDefault();
+
+			var files = e.dataTransfer.files; // Array of all files
+			for(var i = 0;i < files.length;i++){
+				var file = files[i];
+
+				// Max 10 MB
+				if(file.size > 10485760){
+					alert("Max size of file is 10MB");
+					return;
+				}
+
+				var reader = new FileReader();
+				reader.onload = (function(file){
+					return function(e){
+						Chat.send_msg({
+							type: file.type,
+							name: file.name,
+							url: e.target.result
+						});
+					};
+				})(file);
+				reader.readAsDataURL(file);
+			}
+		});
+	},
+
+	socketlisteners: function() {
+		// We need to reference new socket object upon reconnection
+		// so do it in a dedicated function.
+		Chat.socket.addEventListener("open", function(event) {
+			console.debug('Websocket opened');
+			Chat.connect();
+			Chat.keepalive();
+		});
+
+		Chat.socket.addEventListener("close", function() {
+			console.debug('Received close on websocket');
+			Chat.disconnect();
+		});
+
+		Chat.socket.addEventListener("message", function (e) {
 			let message;
 		
 			try {
@@ -516,9 +556,8 @@ var Chat = {
 				return;
 			}
 		
-			//console.debug("Received event:", message.event, "with data:", message);
-		
-			// dispatch events
+			// dispatch events; I chose to use CustomEvents,
+			// we dont have to parse the incoming message more than once.
 			switch (message.event) {
 				case "force-login":
 					Chat.force_login(message.data);
@@ -567,45 +606,6 @@ var Chat = {
 				default:
 					console.warn("Unknown event:", message.event);
 			}
-		};		
-
-		var dropZone = document.getElementsByTagName("body")[0];
-
-		// Optional. Show the copy icon when dragging over. Seems to only work for chrome.
-		dropZone.addEventListener('dragover', function(e){
-			e.stopPropagation();
-			e.preventDefault();
-
-			e.dataTransfer.dropEffect = 'copy';
-		});
-
-		// Get file data on drop
-		dropZone.addEventListener('drop', function(e){
-			e.stopPropagation();
-			e.preventDefault();
-
-			var files = e.dataTransfer.files; // Array of all files
-			for(var i = 0;i < files.length;i++){
-				var file = files[i];
-
-				// Max 10 MB
-				if(file.size > 10485760){
-					alert("Max size of file is 10MB");
-					return;
-				}
-
-				var reader = new FileReader();
-				reader.onload = (function(file){
-					return function(e){
-						Chat.send_msg({
-							type: file.type,
-							name: file.name,
-							url: e.target.result
-						});
-					};
-				})(file);
-				reader.readAsDataURL(file);
-			}
 		});
 
 		// close socket upon refresh or tab close, free the username
@@ -615,5 +615,75 @@ var Chat = {
 			}
 			Chat.socket.close();
 		});
-	}
+	},
+
+	reinit: async function() {
+		try {
+			Chat.socket = await this.openWebSocket();
+			Chat.notif.favicon('red');
+			Chat.socketlisteners();
+			Chat.connect();
+		} catch (e) {
+			console.warn('reinit failed, retrying.');
+		}
+	},
+
+	send: async function(data){
+		try {
+			if (Chat.socket.readyState === WebSocket.OPEN) {
+				Chat.socket.send(JSON.stringify(data));
+			} else if (Chat.socket.readyState === WebSocket.CONNECTING) {
+				// We dont expect to ever be in this state when send is called, but good to handle this properly.
+				setTimeout(() => Chat.send(data), 100);
+			} else if (Chat.socket.readyState === WebSocket.CLOSING || Chat.socket.readyState === WebSocket.CLOSED) {
+				throw Error("WebSocket is closed or closing, message not sent.");
+			}
+		} catch (e) {
+			// couldnt commicate with server, inform user were disconnected
+			console.error(e);
+			Chat.disconnect();
+		}
+	},
+
+	keepalive: function() {	
+		setInterval(async () => {
+			console.debug('keepalive');
+			if (Chat.socket.readyState === WebSocket.OPEN) {
+				console.debug("Sending ping to server");
+				Chat.send({ event: "ping" });
+			} else if (Chat.socket.readyState === WebSocket.CLOSED) {
+				console.warn("WebSocket is closed, reconnecting...");
+				// reinit will be called repeatedly until reconnection.
+				await this.reinit();
+			}
+		}, 5000);
+	},
+
+	openWebSocket: async function() {
+		console.debug('this.Chat', Chat);
+		console.debug('this.url', Chat.url);
+		return new Promise((resolve, reject) => {
+			console.debug("Attempting to reopen socket:", Chat.url);
+	
+			let socket;
+			try {
+				socket = new WebSocket(Chat.url);
+				console.debug("WebSocket object created:", socket);
+			} catch (error) {
+				console.error("WebSocket creation failed:", error);
+				reject(error);
+				return;
+			}
+	
+			socket.addEventListener("open", () => {
+				console.debug("WebSocket opened successfully");
+				resolve(socket);
+			});
+	
+			socket.addEventListener("error", (event) => {
+				console.error("WebSocket connection failed", event);
+				reject(new Error("WebSocket connection failed"));
+			});
+		});
+	}	
 };

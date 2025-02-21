@@ -32,7 +32,7 @@ Usage:
   -readlimit int
         Maximum message size in MB. (default 1)
   -signaling
-        Advertise to client, we provide RTC signaling. (default false)
+        Advertise to client, we provide RTC signaling.
 ```
 
 ## How to build

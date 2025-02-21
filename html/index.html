@@ -52,11 +52,11 @@
 	<script type="text/javascript">
 		// optionally set own server where the client connects to
 		const proto = location.protocol === "http:" ? "ws://" : "wss://";
-		const path = location.pathname.replace(/\/$/, '')
-		const ws = new WebSocket(proto + location.host + path + "/ws");
+		const path = location.pathname.replace(/\/$/, '');
+		const url = proto + location.host + path + "/ws";
 
 		Emic.init();
-		Chat.init(ws);
+		Chat.init(url);
 	</script>
 	<script type="text/javascript" src="static/scripts/webrtc.js"></script>
 </body>
