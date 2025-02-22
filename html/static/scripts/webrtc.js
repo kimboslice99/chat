@@ -4,10 +4,12 @@ const iceCandidateQueues = {};
 let signalInitalized = false;
 let chatIsMuted = false;
 let hasMicrophone = false;
+let outputId = "default";
+let inputId = "default";
 const config = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' }, // public google STUN server
-        // Add TURN server configuration if needed
+        // Add TURN server configuration if needed.
         /*
         {
             urls: 'turn:server.com:5349',
@@ -20,43 +22,92 @@ const config = {
 
 // Check for available audio input devices
 async function checkMediaDevices() {
-    // quick check to see if we have a mic to begin with, will throw exception on plain http.
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    hasMicrophone = devices.some(device => device.kind === 'audioinput');
+    console.debug('Checking media devices');
+    try {
+        // quick check to see if we have a mic to begin with
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        hasMicrophone = devices.some(device => device.kind === 'audioinput');
 
-    if (hasMicrophone) {
-        console.debug('Client has an audio input device.', devices);
-        document.getElementById('errorMsg').classList.add('display-none');
-        getLocalStream();
-    } else {
-        console.debug('Client has no audio input device.');
-        showError('No microphone found.');
-        // poll
-        setTimeout(checkMediaDevices, 1000);
+        if (hasMicrophone) {
+            console.debug('Client has an audio input device.', devices);
+            document.getElementById('errorMsg').classList.add('display-none');
+            getLocalStream();
+        } else {
+            console.debug('Client has no audio input device.');
+            showError('No microphone found.');
+        }
+    } catch (e) {
+        console.warn(e);
+        showError('Unexpected error occured, microphone unavailable.');
     }
 }
 
 // Get local media stream
 async function getLocalStream() {
+    console.debug('Attempting to get local stream with device ID:', inputId);
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // assign stream to localAudio, client can test own microphone.
-        document.getElementById('localAudio').srcObject = stream;
-        localStream = stream;
-        listenStreamEnded();
-        // emit ready unless mic reconnection.
-        if (!signalInitalized)
-            Chat.send( { event: 'ready' } );
+        const newStream = await navigator.mediaDevices.getUserMedia({
+            audio: { deviceId: inputId === "default" ? undefined : { exact: inputId } }
+        });
 
-        signalInitalized = true;
-        // show the controls, our client has microphone, allowed voice permission.
+        const newTrack = newStream.getAudioTracks()[0];
+
+        if (!newTrack) {
+            console.warn("No audio track found in new stream!");
+            return;
+        }
+
+        resetLocalAudio(newStream);
+
+        if (localStream) {
+            console.debug('Replacing local audio track.');
+
+            // Stop old tracks
+            localStream.getTracks().forEach(track => track.stop());
+
+            // Update localStream reference
+            localStream = newStream;
+
+            Object.values(peerConnections).forEach(pc => {
+                const sender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
+                if (sender) {
+                    sender.replaceTrack(newTrack).catch(console.error);
+                }
+            });
+        } else {
+            localStream = newStream; // First-time setup
+        }
+
+        listenStreamEnded(); // Reattach event listener for disconnections
+
+        // Emit ready unless this is a mic reconnection.
+        if (!signalInitalized) {
+            Chat.send({ event: 'ready' });
+            signalInitalized = true;
+        }
+
+        // Show UI
         document.getElementById('errorMsg').classList.add('display-none');
         document.getElementById('audioControls').classList.remove('display-none');
+
     } catch (error) {
-        // denied access to microphone.
         console.error('Error accessing media devices.', error);
         showError('Error accessing microphone: ' + error.message);
+        document.getElementById('audioControls').classList.add('display-none');
     }
+}
+
+function resetLocalAudio(newStream) {
+    console.debug("Resetting local mic test.");
+
+    const localAudioElement = document.getElementById('localAudio');
+    // Stop old tracks before replacing
+    if (localAudioElement.srcObject) {
+        localAudioElement.srcObject.getTracks().forEach(track => track.stop());
+    }
+
+    // Set new audio stream
+    localAudioElement.srcObject = newStream;
 }
 
 function showError(message) {
@@ -80,9 +131,30 @@ window.addEventListener("chat-active", function() {
 
 window.addEventListener("signaling-available", function(event) {
     console.info(event.data === true ? "Server offers RTC Signaling" : "Server does not offer RTC signaling");
-    if (event.data === true)
+    if (event.data === true) {
         checkMediaDevices();
+        navigator.mediaDevices.addEventListener("devicechange", checkMediaDevices);
+        navigator.mediaDevices.addEventListener("devicechange", populateOptions);
+    }
 })
+
+/**
+ * adds listener for audio input stream end event
+ * and fires an event we can reuse elsewhere.
+ * 
+ * @async
+ * @returns {*} 
+ */
+async function listenStreamEnded() {
+    const microphoneStopEvent = new Event('microphonestop');
+    const tracks = localStream.getAudioTracks();
+
+    for (const track of tracks) {
+      track.addEventListener('ended', () => {
+        window.dispatchEvent(microphoneStopEvent);
+      });
+    }
+}
 
 /**
  * Creates a new RTCPeerConnection for a given peer ID and manages media tracks, remote streams, and ICE candidates.
@@ -174,7 +246,6 @@ window.addEventListener("signal", async (event) => {
 window.addEventListener("user-ready", async (event) => {
     console.debug('user-ready fired for id', event.id);
     const id = event.id;
-    
     if (!peerConnections[id]) {
         createPeerConnection(id);
     }
@@ -209,31 +280,10 @@ window.addEventListener('ul', (data) => {
     }
 });
 
-
-/**
- * adds listener for audio input stream end event
- * and fires an event we can reuse elsewhere.
- * 
- * @async
- * @returns {*} 
- */
-async function listenStreamEnded() {
-    const microphoneStopEvent = new Event('microphonestop');
-    const tracks = localStream.getAudioTracks();
-
-    for (const track of tracks) {
-      track.addEventListener('ended', () => {
-        window.dispatchEvent(microphoneStopEvent);
-      });
-    }
-}
-
 window.addEventListener('microphonestop', () => {
     document.getElementById('audioControls').classList.add('display-none');
     console.debug('Microphone lost.');
     showError('No microphone found.');
-    // start waiting again
-    checkMediaDevices();
 });
 
 // For client to test their microphone.
@@ -251,16 +301,81 @@ function toggleMicMute() {
     }
 }
 
-// Mute chat function
 function muteChat() {
-    chatIsMuted = !chatIsMuted; // toggle
+    chatIsMuted = !chatIsMuted;
     const remoteAudioElements = document.querySelectorAll('#remoteAudios audio');
+    // mute each remote stream.
     remoteAudioElements.forEach(remoteAudioElement => {
         remoteAudioElement.muted = chatIsMuted;
     });
     console.log(`Chat is ${chatIsMuted ? 'muted' : 'unmuted'}`);
 }
 
+async function populateOptions(){
+    addOptions('mic-select');
+    addOptions('output-select', false);
+}
+
+async function addOptions(id, input = true) {
+    let selectElement = document.getElementById(id);
+    if (!selectElement) return;
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+
+    const filteredDevices = devices.filter(device => 
+        input ? device.kind === 'audioinput' : device.kind === 'audiooutput'
+    );
+
+    // Clear existing options
+    selectElement.innerHTML = "";
+
+    // Populate the select element with filtered devices
+    filteredDevices.forEach(device => {
+        let opt = document.createElement('option');
+        opt.innerText = device.label || `Device ${device.deviceId}`;
+        opt.value = device.deviceId;
+        selectElement.appendChild(opt);
+    });
+
+    if (input) {
+        selectElement.addEventListener("change", (event) => {
+            const selectedDeviceId = event.target.value;
+            console.debug(`Selected input device: ${selectedDeviceId}`);
+            inputId = selectedDeviceId;
+            getLocalStream();
+        });
+    } else {
+        selectElement.addEventListener("change", async (event) => {
+            const selectedDeviceId = event.target.value;
+            console.debug(`Selected output device: ${selectedDeviceId}`);
+            outputId = selectedDeviceId;
+
+            const localAudioElement = document.getElementById('localAudio');
+            if (localAudioElement.setSinkId) {
+                try {
+                    await localAudioElement.setSinkId(outputId);
+                    updateRemoteAudioSink();
+                    console.debug(`Audio output changed to ${outputId}`);
+                } catch (e) {
+                    console.warn("Failed to change audio output:", e);
+                }
+            } else {
+                console.warn("setSinkId is not supported in this browser.");
+            }
+        });
+    }
+}
+
+async function updateRemoteAudioSink(){
+    const remoteAudioElements = document.querySelectorAll('#remoteAudios audio');
+    if(!remoteAudioElements) return;
+
+    remoteAudioElements.forEach(element => {
+        element.setSinkId(outputId);
+    })
+}
+
 document.getElementById('toggleMicPlayback').addEventListener('click', toggleMicPlayback);
 document.getElementById('toggleMicMute').addEventListener('click', toggleMicMute);
 document.getElementById('muteChat').addEventListener('click', muteChat);
+populateOptions();

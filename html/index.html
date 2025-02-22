@@ -22,6 +22,9 @@
 			<audio id="localAudio" autoplay muted></audio>
 			<div id="errorMsg" class="error" class="display-none"></div>
 			<div class="display-none checkboxes" id="audioControls">
+				<select class="select" id="mic-select" title="Input device">
+					<option>Default device</option>
+				</select>
 				<label class="audio-controls">
 					<span>Test Mic</span>
 					<input type="checkbox" id="toggleMicPlayback">
@@ -34,6 +37,9 @@
 					<span>Mute Chat</span>
 					<input type="checkbox" id="muteChat">
 				</label>
+				<select class="select" id="output-select" title="Output device">
+					<option>Default device</option>
+				</select>
 			</div>
 		</div>
 		<div class="chat-form">
