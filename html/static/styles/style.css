@@ -103,6 +103,18 @@ a {
 	.msgs li .message {
 		max-width: 75vw;
 	}
+	select {
+		appearance: none; /* Hides default styles */
+		-webkit-appearance: none;
+		-moz-appearance: none;
+		background: url("data:image/svg+xml,<svg class='svg-icon' style='width: 1em; height: 1em;vertical-align: middle;fill: currentColor;overflow: hidden;color:white;' viewBox='0 0 1024 1024' version='1.1' xmlns='http://www.w3.org/2000/svg'><path d='M768 785.066667a17.015467 17.015467 0 0 1-12.066133-5.000534L512 536.132267 268.066133 780.066133a17.0496 17.0496 0 1 1-24.132266-24.132266l256-256a17.0496 17.0496 0 0 1 24.132266 0l256 256A17.0496 17.0496 0 0 1 768 785.066667z m0-256a17.015467 17.015467 0 0 1-12.066133-5.000534L512 280.132267 268.066133 524.066133a17.0496 17.0496 0 1 1-24.132266-24.132266l256-256a17.0496 17.0496 0 0 1 24.132266 0l256 256A17.0496 17.0496 0 0 1 768 529.066667z'  /></svg>") no-repeat center;
+		background-size: contain;
+		text-indent: -9999px; /* Hides text */
+		width: 30px; /* Adjust width */
+		height: 30px; /* Adjust height */
+		border: none;
+		color:white;
+	  }
 }
 
 .msgs li .writing {
@@ -356,12 +368,16 @@ a {
 }
 
 .display-none {
-	display: none;
+	display: none!important; /* so we can override flex: grid */
 }
 
 input[type=checkbox]{
 	filter: sepia(100%) brightness(80%) hue-rotate(234deg) saturate(70%) contrast(300%);
 	cursor: pointer;
+}
+
+.checkboxes {
+	display: flex;
 }
 
 .checkboxes label {
