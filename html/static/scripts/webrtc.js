@@ -172,7 +172,7 @@ async function listenStreamEnded() {
 async function createPeerConnection(id) {
     peerConnections[id] = new RTCPeerConnection(config);
 
-    // Add local stream to the connection, this is for the client to test its own audio input device
+    // Add local stream to the connection
     if (localStream) {
         localStream.getTracks().forEach(track => peerConnections[id].addTrack(track, localStream));
     }
@@ -291,8 +291,10 @@ socket.on('ul', (data) => {
 
 window.addEventListener('microphonestop', () => {
     document.getElementById('audioControls').classList.add('display-none');
-    console.debug('Microphone lost.');
+    console.debug('Microphone lost, reverting to default.');
     showError('No microphone found.');
+    // mic lost, revert to default
+    inputId = "default";
 });
 
 // For client to test their microphone.
