@@ -391,3 +391,11 @@ input[type=checkbox]{
 .error {
 	font-size: small;
 }
+
+.select {
+	background-color: inherit;
+	max-width: 16vw;
+	height: fit-content;
+	margin-top: auto;
+	margin-bottom: auto;
+}

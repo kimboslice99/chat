@@ -39,14 +39,11 @@ body,
 	border-bottom: none;
 }
 
-.select {
-	background-color: inherit;
+select {
 	color: white;
-	max-width: 16vw;
 }
 
 select option {
 	background-color: #1f1b1b;
 	color: white;
 }
-
