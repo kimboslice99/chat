@@ -32,7 +32,6 @@ const config = {
 
 // Check for available audio input devices
 async function checkMediaDevices() {
-    console.debug('Checking media devices');
     try {
         // quick check to see if we have a mic to begin with
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -57,14 +56,13 @@ async function getLocalStream() {
     console.debug('Attempting to get local stream with device ID:', inputId);
     try {
         const newStream = await navigator.mediaDevices.getUserMedia({
-            audio: { deviceId: inputId === "default" ? undefined : { exact: inputId } },
-            constraints
+            audio: inputId === "default" ? constraints.audio : { ...constraints.audio, deviceId: { exact: inputId } }
         });
 
         const newTrack = newStream.getAudioTracks()[0];
 
         if (!newTrack) {
-            console.warn("No audio track found in new stream!");
+            console.warn("No audio track found in stream!");
             return;
         }
 
@@ -104,8 +102,7 @@ async function getLocalStream() {
 
     } catch (error) {
         console.error('Error accessing media devices.', error);
-        showError('Error accessing microphone: ' + error.message);
-        document.getElementById('audioControls').classList.add('display-none');
+        showError('Error accessing microphone: ' + error);
     }
 }
 
@@ -136,9 +133,7 @@ function showError(message) {
 // Wait for Chat to be online
 // then ask if server offers rtc signaling
 // additionally, we listen for device change event, then check if device is mic.
-// we should handle the case where a client has changed microphones, perhaps? TODO
 window.addEventListener("chat-active", () => {
-    console.debug('Chat is active, asking server if RTC signaling is enabled');
     socket.emit('signaling-enabled');
     socket.once('signaling-available', (enabled) => {
         console.log('RTC Enabled:', enabled);
@@ -148,7 +143,6 @@ window.addEventListener("chat-active", () => {
             navigator.mediaDevices.addEventListener("devicechange", populateOptions);
         }
     });
-
 });
 
 /**
@@ -175,7 +169,7 @@ async function listenStreamEnded() {
  * @param {string} id - The unique identifier of the peer.
  * @returns {void} - This function does not return a value.
  */
-function createPeerConnection(id) {
+async function createPeerConnection(id) {
     peerConnections[id] = new RTCPeerConnection(config);
 
     // Add local stream to the connection, this is for the client to test its own audio input device
@@ -184,7 +178,7 @@ function createPeerConnection(id) {
     }
 
     // Handle remote stream
-    peerConnections[id].ontrack = (event) => {
+    peerConnections[id].ontrack = async (event) => {
         const [remoteStream] = event.streams;
         let remoteAudioElement = document.getElementById(id);
         if (!remoteAudioElement) {
@@ -193,6 +187,12 @@ function createPeerConnection(id) {
             remoteAudioElement.autoplay = true;
             remoteAudioElement.muted = chatIsMuted;
             document.getElementById('remoteAudios').appendChild(remoteAudioElement);
+        }
+        try {
+            await remoteAudioElement.setSinkId(outputId);
+        } catch(e) {
+            // browser may not support it.
+            console.warn(e);
         }
         remoteAudioElement.srcObject = remoteStream;
     };
@@ -347,23 +347,45 @@ async function addOptions(id, input = true) {
     });
 
     if (input) {
-        selectElement.addEventListener("change", (event) => {
+        selectElement.onchange = async (event) => {
             const selectedDeviceId = event.target.value;
             console.debug(`Selected input device: ${selectedDeviceId}`);
             inputId = selectedDeviceId;
             getLocalStream();
-        });
+        };
     } else {
-        selectElement.addEventListener("change", async (event) => {
+        selectElement.onchange = async (event) => {
             const selectedDeviceId = event.target.value;
             console.debug(`Selected output device: ${selectedDeviceId}`);
             outputId = selectedDeviceId;
-
             const localAudioElement = document.getElementById('localAudio');
+
             if (localAudioElement.setSinkId) {
                 try {
+                    // virtual devices such as "communications" need to be mapped to their real ID
+                    if (outputId === "communications") {
+                        const commDevice = filteredDevices.find(d => d.deviceId === "communications");
+
+                        if (commDevice && commDevice.groupId) {
+                            const realDevice = devices.find(d =>
+                                d.kind === "audiooutput" &&
+                                d.deviceId !== "communications" &&
+                                d.groupId === commDevice.groupId
+                            );
+
+                            if (realDevice) {
+                                console.warn(`Remapping "communications" to real device: ${realDevice.label}`);
+                                outputId = realDevice.deviceId;
+                            } else {
+                                console.warn(`No matching real device for "communications", keeping default.`);
+                                outputId = "default";
+                            }
+                        }
+                    }
+                    // update our mic test element to use the selected audio output device.
                     await localAudioElement.setSinkId(outputId);
-                    updateRemoteAudioSink();
+                    // update the remote audio elements as well.
+                    await updateRemoteAudioSink();
                     console.debug(`Audio output changed to ${outputId}`);
                 } catch (e) {
                     console.warn("Failed to change audio output:", e);
@@ -371,17 +393,22 @@ async function addOptions(id, input = true) {
             } else {
                 console.warn("setSinkId is not supported in this browser.");
             }
-        });
+        };
     }
 }
 
 async function updateRemoteAudioSink(){
+    console.debug('updateRemoteAudioSink()', outputId);
     const remoteAudioElements = document.querySelectorAll('#remoteAudios audio');
     if(!remoteAudioElements) return;
-
-    remoteAudioElements.forEach(element => {
-        element.setSinkId(outputId);
-    })
+    for (const element of remoteAudioElements) {
+        try {
+            await element.setSinkId(outputId);
+            console.debug(`Updated audio sink to ${outputId}`);
+        } catch (e) {
+            console.warn("Failed to update audio sink:", e);
+        }
+    }
 }
 
 function setStreamOptions(){
