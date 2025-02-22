@@ -6,6 +6,16 @@ let chatIsMuted = false;
 let hasMicrophone = false;
 let outputId = "default";
 let inputId = "default";
+const constraints = {
+    audio: {
+      autoGainControl: true,
+      noiseSuppression: true,
+      echoCancellation: true,
+      channelCount: 1,
+      sampleRate: 24000,
+      sampleSize: 16
+    }
+  };
 const config = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' }, // public google STUN server
@@ -47,7 +57,8 @@ async function getLocalStream() {
     console.debug('Attempting to get local stream with device ID:', inputId);
     try {
         const newStream = await navigator.mediaDevices.getUserMedia({
-            audio: { deviceId: inputId === "default" ? undefined : { exact: inputId } }
+            audio: { deviceId: inputId === "default" ? undefined : { exact: inputId } },
+            constraints
         });
 
         const newTrack = newStream.getAudioTracks()[0];
@@ -79,6 +90,7 @@ async function getLocalStream() {
         }
 
         listenStreamEnded(); // Reattach event listener for disconnections
+        setStreamOptions();
 
         // Emit ready unless this is a mic reconnection.
         if (!signalInitalized) {
@@ -191,6 +203,8 @@ function createPeerConnection(id) {
             socket.emit('signal', { target: id, signal: { candidate: event.candidate } });
         }
     };
+
+    setStreamOptions();
 }
 
 // Handle signaling messages
@@ -368,6 +382,23 @@ async function updateRemoteAudioSink(){
     remoteAudioElements.forEach(element => {
         element.setSinkId(outputId);
     })
+}
+
+function setStreamOptions(){
+    Object.values(peerConnections).forEach(pc => {
+        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
+        if (sender) {
+            const params = sender.getParameters();
+            if (!params.encodings) {
+              params.encodings = [{}];
+            }
+            params.encodings[0].maxBitrate = 50 * 1000; // 50 kbps
+            params.encodings[0].priority = "high";
+            params.encodings[0].networkPriority = "high";
+            sender.setParameters(params);
+            console.debug('senderparams', params);
+        }
+    });
 }
 
 document.getElementById('toggleMicPlayback').addEventListener('click', toggleMicPlayback);
