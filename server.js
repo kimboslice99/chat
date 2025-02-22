@@ -135,22 +135,29 @@ io.sockets.on("connection", function(socket){
 
 	/* Client is ready for audio communication, inform all other clients in "main" */
 	socket.on('ready', () => {
-		if (signalingEnabled){
-			if (nick != null){
-				console.log('ready', nick, socket.id);
-				socket.to("main").emit('user-ready', socket.id);
-			}
+		if (signalingEnabled && nick != null){
+			console.log('ready', nick, socket.id);
+			socket.to("main").emit('user-ready', socket.id);
 		}
 	});
 
 	/* Client has given us signal for peer */
 	socket.on('signal', (data) => {
-		if (signalingEnabled){
-			if (!nick || !data || !data.target || !data.signal) {
+		if (signalingEnabled && nick != null) {
+			if (!data || typeof data !== 'object' || 
+				typeof data.target !== 'string' || 
+				typeof data.signal !== 'object') {  
 				console.log('Invalid signal received from', socket.id);
 				return;
 			}
 
+			// Ensure the target socket exists before emitting
+			const targetSocket = io.sockets.sockets.get(data.target);  
+			if (!targetSocket) {
+				console.log(`Invalid target socket ID: ${data.target} from ${socket.id}`);
+				return;
+			}
+	
 			socket.to(data.target).emit('signal', {
 				from: socket.id,
 				signal: data.signal
