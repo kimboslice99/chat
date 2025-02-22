@@ -340,7 +340,7 @@ var Chat = {
 			alert(fail);
 		}
 
-		var nick = prompt("Your nick:", sessionStorage.nick || localStorage.nick || "");
+		var nick = prompt("Your nick:", sessionStorage.nick || localStorage.nick || "").trim();
 		if(typeof nick !== "undefined" && nick){
 			sessionStorage.nick = localStorage.nick = nick;
 			let data = { event: "login", data: { nick: nick } }
