@@ -214,7 +214,7 @@ window.addEventListener("signal", async (event) => {
             await peerConnections[from].setLocalDescription(answer); // Set the local description with the answer
 
             // Send the answer back to the originating peer
-            chat.send({ event: 'signal', data: { target: from, signal: { sdp: peerConnections[from].localDescription } } });
+            Chat.send({ event: 'signal', data: { target: from, signal: { sdp: peerConnections[from].localDescription } } });
         }
 
         // Add any ICE candidates that were queued while waiting for the remote description

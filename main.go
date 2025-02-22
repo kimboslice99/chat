@@ -291,8 +291,12 @@ func main() {
 			}
 
 			logger("DEBUG", "user-ready response sent:", string(readyJson))
-			// tell everyone "user" is ready for signaling
-			c.hub.broadcast <- readyJson
+
+			for _, client := range c.hub.clients {
+				if client != c && client.nick != "" {
+					client.send <- readyJson
+				}
+			}
 		}
 	})
 
