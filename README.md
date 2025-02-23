@@ -36,6 +36,7 @@ services:
  ```
 
 ## Cache
+
 `CACHE_SIZE` is optional and determines the number of messages stored on the server. When new users join (or reconnect), that cache is sent to give a brief history. This defaults to zero, but can be set as an environment variable.
 
 If you're not running in a docker container, you can make a `.env` file in the project root with `CACHE_SIZE=50` in.
@@ -53,3 +54,28 @@ Requirements: `nodejs`, `npm`
 3. Run server (default port is `80`).
 	- `npm start [custom_port]`
 4. Done, visit your chat in browser.
+
+## WebRTC Signaling
+
+WebRTC signaling can be enabled by setting `CHAT_SIGNALING_ENABLED` environment variable.
+
+A TURN server is required for clients that do not share a suitable network protocol (ie: IPv4 only client cannot communicate with an IPv6 only client). For the most part, STUN is all thats required to get things working, a public STUN server has been provided already so this configuration is not strictly necessary.
+
+To provide your clients with short term tokens for a TURN server, enter a command into the `.command` file, the command should make an API request to your turn provider and return the credentials structured as follows.
+
+```json
+[
+  {
+    "urls": "",
+    "username": "",
+    "credential": ""
+  },
+  {
+    "urls": "",
+    "username": "",
+    "credential": ""
+  }
+]
+```
+
+A couple of powershell scripts have been provided to make things easier. Currently just metered and CF.
