@@ -28,7 +28,7 @@ var cacheSize *int = cache     // message cache size.
 func main() {
 	// serve static assets.
 	fs := http.FileServer(http.Dir("html"))
-	http.Handle("/", fs)
+	http.Handle("/", etagMiddleware(fs))
 	flag.Parse()
 	hub := newHub()
 	go hub.run()
@@ -37,17 +37,13 @@ func main() {
 
 	// login event
 	events.On("login", func(c *Client, data []byte) {
-		// a structure to decode the request.
-		var loginData struct {
-			Nick string `json:"nick"`
-		}
-		// since this may not throw an error for an empty username.
+		var loginData EventData
 		err := json.Unmarshal(data, &loginData)
 		if err != nil {
 			logger("ERROR", "Failed to parse login data:", err)
 			return
 		}
-		// we will check it.
+
 		if loginData.Nick == "" {
 			forceLogin(c, "Nick can't be empty.")
 			return
@@ -79,7 +75,7 @@ func main() {
 		logger("DEBUG", "Emitting start event:", string(startEventJSON))
 		c.send <- startEventJSON
 
-		// tell everyone "user" joined.
+		// tell everyone "user" entered.
 		userEnteredEvent := Event{
 			Event: "ue",
 			Data: EventData{
