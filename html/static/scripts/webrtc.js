@@ -15,18 +15,10 @@ const constraints = {
       sampleRate: 24000,
       sampleSize: 16
     }
-  };
-const config = {
+};
+let config = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' }, // public google STUN server
-        // Add TURN server configuration if needed.
-        /*
-        {
-            urls: 'turn:server.com:5349',
-            username: 'user',
-            credential: 'password'
-        }
-        */
     ]
 };
 
@@ -129,6 +121,34 @@ function showError(message) {
         element.classList.remove("display-none");
     }
 }
+
+/**
+ * This function merges the static config with a server provided config.
+ * @param {*} baseConfig 
+ * @param {*} newConfig 
+ * @returns The merged array, or base config if server did not provide one.
+ */
+const mergeIceServers = (baseConfig, newConfig) => {
+    const mergedServers = [...baseConfig.iceServers];
+
+    if (!newConfig || !newConfig.iceServers || newConfig.iceServers.length === 0) {
+        console.warn("Invalid ICE config received, using base config.", newConfig);
+        return baseConfig;
+    }
+
+    newConfig.iceServers.forEach(server => {
+        const serverConfig = { urls: server.urls };
+
+        if (server.username && server.credential) {
+            serverConfig.username = server.username;
+            serverConfig.credential = server.credential;
+        }
+
+        mergedServers.push(serverConfig);
+    });
+
+    return { iceServers: mergedServers };
+};
 
 // Wait for Chat to be online
 // then ask if server offers rtc signaling
