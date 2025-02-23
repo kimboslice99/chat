@@ -155,12 +155,17 @@ const mergeIceServers = (baseConfig, newConfig) => {
 // additionally, we listen for device change event, then check if device is mic.
 window.addEventListener("chat-active", () => {
     socket.emit('signaling-enabled');
-    socket.once('signaling-available', (enabled) => {
-        console.log('RTC Enabled:', enabled);
-        if (enabled) {
+    socket.once('signaling-available', (data) => {
+        console.log('RTC Enabled:', data.enabled);
+        console.debug('Retrieved iceServers:', data.iceServers);
+        if (data.enabled) {
             checkMediaDevices();
             navigator.mediaDevices.addEventListener("devicechange", checkMediaDevices);
             navigator.mediaDevices.addEventListener("devicechange", populateOptions);
+        }
+        if (data.iceServers && data.iceServers.length > 0) {
+            config = mergeIceServers(config, data);
+            console.debug('Merged config from server', config);
         }
     });
 });

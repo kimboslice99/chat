@@ -1,6 +1,7 @@
 require('dotenv').config()
 const express = require('express')
 const app = express()
+var functions = require('./functions')
 
 const path = require('path')
 const html = path.join(__dirname, '/html');
@@ -128,9 +129,15 @@ io.sockets.on("connection", function(socket){
 		}
 	});
 
-	// for clients to ask if server is offering rtc signalling.
-    socket.on('signaling-enabled', () => {
-        socket.emit('signaling-available', signalingEnabled);
+	// for clients to ask if server is offering rtc signaling, and to provide short-lived tokens
+    socket.on('signaling-enabled', async () => {
+		if (nick != null) {
+			let iceServers = await functions.executeCommandFromFile();
+			socket.emit('signaling-available', {
+				enabled: signalingEnabled,
+				iceServers: iceServers
+			});
+		}
     });
 
 	/* Client is ready for audio communication, inform all other clients in "main" */
