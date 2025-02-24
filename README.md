@@ -76,4 +76,4 @@ To provide your clients with short term tokens for a TURN server, enter a comman
 ]
 ```
 
-A couple of powershell scripts have been provided to make things easier. Currently just metered and CF.
+A couple of powershell and bash scripts have been provided to make things easier. Currently just metered and CF.
