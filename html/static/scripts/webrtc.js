@@ -137,14 +137,7 @@ const mergeIceServers = (baseConfig, newConfig) => {
     }
 
     newConfig.iceServers.forEach(server => {
-        const serverConfig = { urls: server.urls };
-
-        if (server.username && server.credential) {
-            serverConfig.username = server.username;
-            serverConfig.credential = server.credential;
-        }
-
-        mergedServers.push(serverConfig);
+        mergedServers.push(server);
     });
 
     return { iceServers: mergedServers };
