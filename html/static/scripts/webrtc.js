@@ -137,14 +137,7 @@ const mergeIceServers = (baseConfig, newConfig) => {
     }
 
     newConfig.iceServers.forEach(server => {
-        const serverConfig = { urls: server.urls };
-
-        if (server.username && server.credential) {
-            serverConfig.username = server.username;
-            serverConfig.credential = server.credential;
-        }
-
-        mergedServers.push(serverConfig);
+        mergedServers.push(server);
     });
 
     return { iceServers: mergedServers };
@@ -152,7 +145,6 @@ const mergeIceServers = (baseConfig, newConfig) => {
 
 // Wait for Chat to be online
 // then ask if server offers rtc signaling
-// additionally, we listen for device change event, then check if device is mic.
 window.addEventListener("chat-active", () => {
     socket.emit('signaling-enabled');
     socket.once('signaling-available', (data) => {
