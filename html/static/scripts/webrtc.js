@@ -167,6 +167,8 @@ window.addEventListener("signaling-available", function(event) {
     if (event.data.iceServers && event.data.iceServers.length > 0) {
         config = mergeIceServers(config, event.data);
         console.debug('Merged config from server', config);
+    } else {
+        console.debug('Server did not provide TURN config, relying on STUN servers only.');
     }
 })
 

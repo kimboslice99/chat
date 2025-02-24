@@ -1,6 +1,7 @@
 var Chat = {
 	socket: null,
 	url: null,
+	pingTime: null,
 
 	loading: document.getElementById("loading"),
 	chat_box: document.getElementById("chat-box"),
@@ -405,7 +406,6 @@ var Chat = {
 	},
 
 	connect: function(){
-		console.debug('connect called!');
 		// Set green favicon
 		Chat.notif.favicon('green');
 		Chat.is_online = true;
@@ -586,7 +586,8 @@ var Chat = {
 					window.dispatchEvent(userLeft);
 					break;
 				case "pong":
-					console.debug('Received pong from server, all is well.', message);
+					console.debug('Received pong from server.', performance.now() - pingTime, 'ms', message);
+					pingTime = null;
 					break;
 				case "signaling-available":
 					const signalEnabled = new CustomEvent("signaling-available");
@@ -647,9 +648,9 @@ var Chat = {
 
 	keepalive: function() {	
 		setInterval(async () => {
-			console.debug('keepalive');
 			if (Chat.socket.readyState === WebSocket.OPEN) {
 				console.debug("Sending ping to server");
+				pingTime = performance.now();
 				Chat.send({ event: "ping" });
 			} else if (Chat.socket.readyState === WebSocket.CLOSED) {
 				console.warn("WebSocket is closed, reconnecting...");
