@@ -257,9 +257,18 @@ func main() {
 
 	events.On("signaling-enabled", func(c *Client, data []byte) {
 		if c.nick != "" {
+			iceServers, err := executeCommandFromFile()
+			if err != nil {
+				logger("ERROR", "Failed to execute command from file.", err)
+			}
+			eventData := EventData{
+				Enabled:    *signalingEnabled,
+				IceServers: iceServers,
+			}
+
 			availableEvent := Event{
 				Event: "signaling-available",
-				Data:  signalingEnabled,
+				Data:  eventData,
 			}
 
 			availableJson, err := json.Marshal(availableEvent)

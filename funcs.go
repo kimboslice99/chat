@@ -93,3 +93,37 @@ func generateETag(path string) (string, error) {
 
 	return fmt.Sprintf(`"%x-%x"`, info.ModTime().UnixNano(), info.Size()), nil
 }
+
+func executeCommandFromFile() ([]Credential, error) {
+	// Read the command from a file
+	data, err := os.ReadFile(".command")
+	if err != nil {
+		return nil, fmt.Errorf("error reading file: %v", err)
+	}
+
+	// Convert to string and split into command and arguments
+	commandStr := strings.TrimSpace(string(data))
+	parts := strings.Fields(commandStr) // Split into command and args
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("no command found")
+	}
+
+	// First part is the command, the rest are arguments
+	cmd := exec.Command(parts[0], parts[1:]...)
+
+	// Capture JSON output
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("error executing command: %v", err)
+	}
+
+	// Try parsing JSON
+	var creds []Credential
+	err = json.Unmarshal(output, &creds)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing JSON: %v", err)
+	}
+
+	// Return parsed JSON data
+	return creds, nil
+}

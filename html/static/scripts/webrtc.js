@@ -158,11 +158,15 @@ window.addEventListener("chat-active", function() {
 });
 
 window.addEventListener("signaling-available", function(event) {
-    console.info(event.data === true ? "Server offers RTC Signaling" : "Server does not offer RTC signaling");
-    if (event.data === true) {
+    console.info(event.data.enabled === true ? "Server offers RTC Signaling" : "Server does not offer RTC signaling");
+    if (event.data.enabled === true) {
         checkMediaDevices();
         navigator.mediaDevices.addEventListener("devicechange", checkMediaDevices);
         navigator.mediaDevices.addEventListener("devicechange", populateOptions);
+    }
+    if (event.data.iceServers && event.data.iceServers.length > 0) {
+        config = mergeIceServers(config, event.data);
+        console.debug('Merged config from server', config);
     }
 })
 

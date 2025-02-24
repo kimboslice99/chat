@@ -34,9 +34,11 @@ type Event struct {
 }
 
 type EventData struct {
-	Users  []string `json:"users,omitempty"`
-	Status bool     `json:"status,omitempty"`
-	Nick   string   `json:"nick,omitempty"`
+	Users      []string    `json:"users,omitempty"`
+	Status     bool        `json:"status,omitempty"`
+	Nick       string      `json:"nick,omitempty"`
+	Enabled    bool        `json:"enabled,omitempty"`
+	IceServers interface{} `json:"iceServers,omitempty"`
 }
 
 // structures for WebRTC signaling.
@@ -60,4 +62,10 @@ type Signal struct {
 type SignalingData struct {
 	Target string `json:"target"`
 	Signal Signal `json:"signal"`
+}
+
+type Credential struct {
+	Urls       string `json:"urls"`
+	Username   string `json:"username"`
+	Credential string `json:"credential"`
 }
