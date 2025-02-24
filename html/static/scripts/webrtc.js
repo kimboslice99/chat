@@ -152,7 +152,6 @@ const mergeIceServers = (baseConfig, newConfig) => {
 
 // Wait for Chat to be online
 // then ask if server offers rtc signaling
-// additionally, we keep polling for microphone if none found, user may plug one in afterwards
 window.addEventListener("chat-active", function() {
     Chat.send({ event: "signaling-enabled" });
 });
