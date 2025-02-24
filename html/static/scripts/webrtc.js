@@ -129,18 +129,12 @@ function showError(message) {
  * @returns The merged array, or base config if server did not provide one.
  */
 const mergeIceServers = (baseConfig, newConfig) => {
-    const mergedServers = [...baseConfig.iceServers];
-
-    if (!newConfig || !newConfig.iceServers || newConfig.iceServers.length === 0) {
+    if (!newConfig?.iceServers?.length) {
         console.warn("Invalid ICE config received, using base config.", newConfig);
         return baseConfig;
     }
 
-    newConfig.iceServers.forEach(server => {
-        mergedServers.push(server);
-    });
-
-    return { iceServers: mergedServers };
+    return { iceServers: [...baseConfig.iceServers, ...newConfig.iceServers] };
 };
 
 // Wait for Chat to be online
