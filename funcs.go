@@ -72,7 +72,7 @@ func etagMiddleware(next http.Handler) http.Handler {
 		if stat, err := os.Stat(filePath); err == nil && !stat.IsDir() {
 			if etag, err := generateETag(filePath); err == nil {
 				w.Header().Set("ETag", etag)
-				w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
+				w.Header().Set("Cache-Control", "no-cache")
 				if match := r.Header.Get("If-None-Match"); match == etag {
 					w.WriteHeader(http.StatusNotModified)
 					return
