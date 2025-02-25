@@ -1,3 +1,4 @@
+const secure = location.protocol == "https:" ? true : false;
 let localStream;
 const peerConnections = {};
 const iceCandidateQueues = {};
@@ -10,10 +11,8 @@ const constraints = {
     audio: {
       autoGainControl: true,
       noiseSuppression: true,
-      echoCancellation: true,
-      channelCount: 1,
-      sampleRate: 24000,
-      sampleSize: 16
+      echoCancellation: false,
+      sampleRate: 48000,
     }
 };
 let config = {
@@ -143,6 +142,11 @@ window.addEventListener("chat-active", () => {
     socket.emit('signaling-enabled');
     socket.once('signaling-available', (data) => {
         console.log('RTC Enabled:', data.enabled);
+        if (!secure) {
+            console.log('WebRTC requires a secure connection (HTTPS).');
+            showError('WebRTC cannot be enabled on an insecure connection.');
+            return;
+        }
         console.debug('Retrieved iceServers:', data.iceServers);
         if (data.enabled) {
             checkMediaDevices();
@@ -424,19 +428,25 @@ async function updateRemoteAudioSink(){
     }
 }
 
-function setStreamOptions(){
+function setStreamOptions() {
     Object.values(peerConnections).forEach(pc => {
+        if (!pc) return;
+
         const sender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
         if (sender) {
             const params = sender.getParameters();
-            if (!params.encodings) {
-              params.encodings = [{}];
+            if (!params.encodings.length) {
+                params.encodings = [{}];
             }
+
             params.encodings[0].maxBitrate = 50 * 1000; // 50 kbps
-            params.encodings[0].priority = "high";
-            params.encodings[0].networkPriority = "high";
-            sender.setParameters(params);
-            console.debug('senderparams', params);
+
+            try {
+                sender.setParameters(params);
+                console.debug('Updated sender parameters:', params);
+            } catch (err) {
+                console.warn('Failed to set sender parameters:', err);
+            }
         }
     });
 }
