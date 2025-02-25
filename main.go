@@ -34,6 +34,11 @@ func main() {
 	go hub.run()
 	events := NewEventManager()
 	logger("INFO", "Starting server on", *address)
+	msg := "disabled"
+	if *signalingEnabled {
+		msg = "enabled"
+	}
+	logger("INFO", "RTC signaling is", msg)
 
 	// login event
 	events.On("login", func(c *Client, data []byte) {
