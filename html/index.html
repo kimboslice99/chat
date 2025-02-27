@@ -55,6 +55,7 @@
 
 	<script type="text/javascript" src="static/scripts/emic.js"></script>
 	<script type="text/javascript" src="static/scripts/chat.js"></script>
+	<script type="text/javascript" src="static/scripts/webrtc.js"></script>
 	<script type="text/javascript">
 		// optionally set own server where the client connects to
 		const proto = location.protocol === "http:" ? "ws://" : "wss://";
@@ -63,7 +64,7 @@
 
 		Emic.init();
 		Chat.init(url);
+		WebRTC.init();
 	</script>
-	<script type="text/javascript" src="static/scripts/webrtc.js"></script>
 </body>
 </html>

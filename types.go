@@ -27,7 +27,7 @@ type MessageCacheResponse struct {
 	Msgs  []MessageData `json:"msgs"`
 }
 
-// for encoding, we dont need type assertion, but for decoding, we do.
+// only used for encoding responses, so interface{} is fine.
 type Event struct {
 	Event string      `json:"event"`
 	Data  interface{} `json:"data,omitempty"`
@@ -45,7 +45,7 @@ type EventData struct {
 type Candidate struct {
 	Candidate        string `json:"candidate,omitempty"`
 	SdpMid           string `json:"sdpMid,omitempty"`
-	SdpMLineIndex    *int   `json:"sdpMLineIndex,omitempty"` // Use pointer to omit when zero
+	SdpMLineIndex    *int   `json:"sdpMLineIndex,omitempty"`
 	UsernameFragment string `json:"usernameFragment,omitempty"`
 }
 
@@ -56,7 +56,7 @@ type Sdp struct {
 
 type Signal struct {
 	Candidate *Candidate `json:"candidate,omitempty"` // Pointer allows nil
-	Sdp       *Sdp       `json:"sdp,omitempty"`       // Pointer allows nil
+	Sdp       *Sdp       `json:"sdp,omitempty"`
 }
 
 type SignalingData struct {

@@ -637,7 +637,7 @@ var Chat = {
 				// We dont expect to ever be in this state when send is called, but good to handle this properly.
 				setTimeout(() => Chat.send(data), 100);
 			} else if (Chat.socket.readyState === WebSocket.CLOSING || Chat.socket.readyState === WebSocket.CLOSED) {
-				throw Error("WebSocket is closed or closing, message not sent.");
+				throw Error("WebSocket is closed, message not sent.");
 			}
 		} catch (e) {
 			// couldnt commicate with server, inform user were disconnected
@@ -661,8 +661,6 @@ var Chat = {
 	},
 
 	openWebSocket: async function() {
-		console.debug('this.Chat', Chat);
-		console.debug('this.url', Chat.url);
 		return new Promise((resolve, reject) => {
 			console.debug("Attempting to reopen socket:", Chat.url);
 	
