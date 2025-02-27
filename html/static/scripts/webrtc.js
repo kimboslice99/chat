@@ -153,8 +153,8 @@ var WebRTC = {
             }
             if (event.data.enabled === true) {
                 this.checkMediaDevices();
-                navigator.mediaDevices.addEventListener("devicechange", () => this.checkMediaDevices);
-                navigator.mediaDevices.addEventListener("devicechange", () => this.populateOptions);
+                navigator.mediaDevices.addEventListener("devicechange", () => this.checkMediaDevices());
+                navigator.mediaDevices.addEventListener("devicechange", () => this.populateOptions());
             }
             if (event.data.iceServers && event.data.iceServers.length > 0) {
                 this.config = this.mergeIceServers(this.config, event.data);
@@ -260,9 +260,9 @@ var WebRTC = {
             this.inputId = "default";
         });
         
-        document.getElementById('toggleMicPlayback').addEventListener('click', () => this.toggleMicPlayback);
-        document.getElementById('toggleMicMute').addEventListener('click', () => this.toggleMicMute);
-        document.getElementById('muteChat').addEventListener('click', () => this.muteChat);
+        document.getElementById('toggleMicPlayback').addEventListener('click', () => this.toggleMicPlayback());
+        document.getElementById('toggleMicMute').addEventListener('click', () => this.toggleMicMute());
+        document.getElementById('muteChat').addEventListener('click', () => this.muteChat());
         this.populateOptions();
     },
 
