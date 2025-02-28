@@ -43,6 +43,7 @@ type Client struct {
 	events *EventManager
 	nick   string
 	id     string
+	roomID string
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -151,7 +152,6 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request, events *EventMana
 		events: events,
 		id:     uuid.NewString(),
 	}
-	client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.

@@ -19,11 +19,12 @@ var maxMessageSize = flag.Int64("readlimit", 1, "Maximum message size in MB.")
 var certFile = flag.String("certfile", "", "Path to a TLS certificate.")
 var keyFile = flag.String("keyfile", "", "Path to a private key path.")
 var signalingEnabled = flag.Bool("signaling", false, "Advertise to client, we provide RTC signaling.")
+var roomsEnabled = flag.Bool("rooms", false, "Enable room support.")
 
-var userlist []string          // list of users.
-var msgid int = 1              // message id.
-var messageCache []MessageData // message cache.
-var cacheSize *int = cache     // message cache size.
+var userlist = make(map[string][]string) // Maps roomID to a list of usernames
+var msgid int = 1                        // message id.
+var messageCache []MessageData           // message cache.
+var cacheSize *int = cache               // message cache size.
 
 func main() {
 	// serve static assets.
@@ -39,9 +40,24 @@ func main() {
 		msg = "enabled"
 	}
 	logger("INFO", "RTC signaling is", msg)
+	msg = "disabled, using default room 'main'"
+	if *roomsEnabled {
+		msg = "enabled"
+	}
+	logger("INFO", "Rooms are", msg)
 
 	// login event
 	events.On("login", func(c *Client, data []byte) {
+		if !*roomsEnabled {
+			hub.addClientToRoom(c, "main")
+			logger("DEBUG", "Assigned client", c.id, "to default room 'main'. Current roomID:", c.roomID)
+		}
+
+		if c.roomID == "" && *roomsEnabled {
+			forceRoom(c, "You must join a room before logging in.")
+			return
+		}
+
 		var loginData EventData
 		err := json.Unmarshal(data, &loginData)
 		if err != nil {
@@ -53,21 +69,24 @@ func main() {
 			forceLogin(c, "Nick can't be empty.")
 			return
 		}
-		// check if user in.
-		if checkIfUserIn(loginData.Nick) {
-			forceLogin(c, "This nick is already in chat.")
-			return
+
+		// Check if user is already in the room
+		for _, u := range userlist[c.roomID] {
+			if u == loginData.Nick {
+				forceLogin(c, "This nick is already in chat.")
+				return
+			}
 		}
 
 		// now add the user to the list.
-		userlist = append(userlist, loginData.Nick)
+		userlist[c.roomID] = append(userlist[c.roomID], loginData.Nick)
 		logger("DEBUG", "Updated users list:", userlist)
 
 		// Tell this user who is already in.
 		startEvent := Event{
 			Event: "start",
 			Data: EventData{
-				Users: userlist,
+				Users: userlist[c.roomID],
 			},
 		}
 
@@ -97,7 +116,7 @@ func main() {
 		// save nick.
 		c.nick = loginData.Nick
 		// emit to everyone except "user".
-		for _, client := range c.hub.clients {
+		for _, client := range c.hub.rooms[c.roomID] {
 			if client != c && client.nick != "" {
 				client.send <- userEnteredJSON
 			}
@@ -156,7 +175,7 @@ func main() {
 		if newMessageJSON, err := json.Marshal(outgoingMessage); err == nil {
 			logger("DEBUG", "send-msg event triggered for:", c.nick)
 			// broadcast to all, except clients without nick
-			for _, client := range c.hub.clients {
+			for _, client := range c.hub.rooms[c.roomID] {
 				if client.nick != "" {
 					client.send <- newMessageJSON
 				}
@@ -198,7 +217,7 @@ func main() {
 		}
 
 		// Broadcast to all clients except the sender.
-		for _, client := range c.hub.clients {
+		for _, client := range c.hub.rooms[c.roomID] {
 			if client != c && client.nick != "" {
 				client.send <- typingJSON
 			}
@@ -217,12 +236,18 @@ func main() {
 		if c.nick != "" {
 			logger("DEBUG", "Disconnecting client:", c.nick)
 			// remove "user" from the list.
-			for i, v := range userlist {
+			for i, v := range userlist[c.roomID] {
 				if v == c.nick {
-					userlist = append(userlist[:i], userlist[i+1:]...)
+					userlist[c.roomID] = append(userlist[c.roomID][:i], userlist[c.roomID][i+1:]...)
 					break
 				}
 			}
+
+			// If the room is now empty, remove it
+			if len(userlist[c.roomID]) == 0 {
+				delete(userlist, c.roomID)
+			}
+
 			// Tell everyone, "user" left.
 			userLeftEvent := Event{
 				Event: "ul",
@@ -237,7 +262,10 @@ func main() {
 				return
 			}
 
-			c.hub.broadcast <- userLeftJson
+			c.hub.broadcast <- RoomMessage{
+				RoomID: c.roomID,
+				Data:   userLeftJson,
+			}
 
 			// Remove client from hub.
 			c.hub.unregister <- c
@@ -256,7 +284,6 @@ func main() {
 			return
 		}
 
-		logger("DEBUG", "Pong response sent", string(pingJson))
 		c.send <- pingJson
 	})
 
@@ -302,7 +329,7 @@ func main() {
 
 			logger("DEBUG", "user-ready response sent:", string(readyJson))
 
-			for _, client := range c.hub.clients {
+			for _, client := range c.hub.rooms[c.roomID] {
 				if client != c && client.nick != "" {
 					client.send <- readyJson
 				}
@@ -340,9 +367,9 @@ func main() {
 		}
 
 		// Check if the target client exists before sending.
-		targetClient, exists := c.hub.clients[signalingData.Target]
+		targetClient, exists := c.hub.rooms[c.roomID][signalingData.Target]
 		if !exists {
-			logger("ERROR", "Target client not found:", signalingData.Target)
+			logger("ERROR", "Target client not found:", signalingData.Target, "in room", c.roomID)
 			return
 		}
 
@@ -355,6 +382,76 @@ func main() {
 		default:
 			logger("ERROR", "Failed to send signal to:", signalingData.Target)
 		}
+	})
+
+	events.On("rooms-enabled", func(c *Client, data []byte) {
+		roomsEvent := Event{
+			Event: "rooms-available",
+			Data:  *roomsEnabled,
+		}
+		roomsEventResponse, err := json.Marshal(roomsEvent)
+		if err != nil {
+			logger("ERROR", "Failed to encode rooms-available event:", err)
+			return
+		}
+		c.send <- roomsEventResponse
+	})
+
+	events.On("join-room", func(c *Client, data []byte) {
+		if !*roomsEnabled {
+			logger("INFO", "join-room event received, but rooms are disabled")
+			return
+		}
+
+		var roomData struct {
+			RoomID string `json:"room"`
+		}
+
+		if err := json.Unmarshal(data, &roomData); err != nil {
+			logger("ERROR", "Failed to parse join-room event:", err)
+			return
+		}
+
+		if roomData.RoomID == "" {
+			logger("INFO", "join-room event received with empty room ID")
+			return
+		}
+
+		// Remove client from the old room (if any)
+		if c.roomID != "" {
+			if _, exists := c.hub.rooms[c.roomID]; exists {
+				delete(c.hub.rooms[c.roomID], c.id)
+				logger("DEBUG", "Client", c.id, "left room", c.roomID)
+
+				// Clean up empty room
+				if len(c.hub.rooms[c.roomID]) == 0 {
+					delete(c.hub.rooms, c.roomID)
+				}
+			}
+		}
+
+		// Assign new room
+		c.roomID = roomData.RoomID
+		if _, exists := c.hub.rooms[c.roomID]; !exists {
+			c.hub.rooms[c.roomID] = make(map[string]*Client)
+		}
+		c.hub.rooms[c.roomID][c.id] = c
+
+		logger("DEBUG", "Client", c.id, "joined room", c.roomID)
+
+		// Notify the client that they joined the room
+		response := Event{
+			Event: "room-joined",
+			Data:  map[string]string{"room": c.roomID},
+		}
+
+		responseJSON, err := json.Marshal(response)
+		if err != nil {
+			logger("ERROR", "Failed to encode room-joined event:", err)
+			return
+		}
+
+		c.send <- responseJSON
 	})
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {

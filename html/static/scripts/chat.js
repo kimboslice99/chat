@@ -2,6 +2,7 @@ var Chat = {
 	socket: null,
 	url: null,
 	pingTime: null,
+	roomsAvailable: false,
 
 	loading: document.getElementById("loading"),
 	chat_box: document.getElementById("chat-box"),
@@ -349,6 +350,19 @@ var Chat = {
 		}
 	},
 
+	force_room: function(fail){
+		if(typeof fail !== "undefined"){
+			alert(fail);
+		}
+
+		var room = prompt("Room name:", sessionStorage.room || localStorage.room || "").trim();
+		if(typeof room !== "undefined" && room){
+			sessionStorage.room = localStorage.room = room;
+			let data = { event: "join-room", data: { room: room } }
+			Chat.send(data);
+		}
+	},
+
 	reload: function(){
 		if(typeof sessionStorage.nick !== "undefined" && sessionStorage.nick){
 			let data = { event: "login", data: { nick: sessionStorage.nick } }
@@ -416,6 +430,9 @@ var Chat = {
 		Chat.users.innerText = '';
 		Chat.last_sent_nick = '';
 
+		if (Chat.roomsAvailable) {
+			Chat.force_room();
+		}
 		// force user to login
 		Chat.force_login();
 	},
@@ -532,7 +549,7 @@ var Chat = {
 		// so do it in a dedicated function.
 		Chat.socket.addEventListener("open", function(event) {
 			console.debug('Websocket opened');
-			Chat.connect();
+			Chat.send({ event: "rooms-enabled" });
 			Chat.keepalive();
 		});
 
@@ -561,6 +578,13 @@ var Chat = {
 			switch (message.event) {
 				case "force-login":
 					Chat.force_login(message.data);
+					break;
+				case "force-room":
+					Chat.force_room(message.data);
+					break;
+				case "rooms-available":
+					Chat.roomsAvailable = message.data;
+					Chat.connect();
 					break;
 				case "typing":
 					Chat.typing.event(message.data);

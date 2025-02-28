@@ -10,11 +10,10 @@ package main
 // Hub maintains the set of active clients and broadcasts messages to the
 // clients.
 type Hub struct {
-	// Registered clients.
-	clients map[string]*Client
+	rooms map[string]map[string]*Client
 
 	// Inbound messages from the clients.
-	broadcast chan []byte
+	broadcast chan RoomMessage
 
 	// Register requests from the clients.
 	register chan *Client
@@ -23,40 +22,56 @@ type Hub struct {
 	unregister chan *Client
 }
 
+type RoomMessage struct {
+	RoomID string
+	Data   []byte
+}
+
 func newHub() *Hub {
 	return &Hub{
-		broadcast:  make(chan []byte),
+		broadcast:  make(chan RoomMessage),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		clients:    make(map[string]*Client),
+		rooms:      make(map[string]map[string]*Client),
 	}
+}
+
+func (h *Hub) addClientToRoom(client *Client, roomID string) {
+	client.roomID = roomID
+	h.register <- client
 }
 
 func (h *Hub) run() {
 	for {
 		select {
 		case client := <-h.register:
-			// Register a new client
-			h.clients[client.id] = client // Use the client's unique ID as the key
-			logger("DEBUG", "Client connected:", client.id)
+			if _, exists := h.rooms[client.roomID]; !exists {
+				h.rooms[client.roomID] = make(map[string]*Client)
+			}
+			h.rooms[client.roomID][client.id] = client
+			logger("DEBUG", "Client", client.id, "joined room", client.roomID)
 
 		case client := <-h.unregister:
-			// Remove client on disconnect
-			if _, ok := h.clients[client.id]; ok {
-				delete(h.clients, client.id)
-				close(client.send)
-				logger("DEBUG", "Client disconnected:", client.id)
+			if room, exists := h.rooms[client.roomID]; exists {
+				if _, ok := room[client.id]; ok {
+					delete(room, client.id)
+					close(client.send)
+					logger("DEBUG", "Client", client.id, "left room", client.roomID)
+				}
+				if len(room) == 0 {
+					delete(h.rooms, client.roomID) // Cleanup empty rooms
+				}
 			}
 
 		case message := <-h.broadcast:
-			// Broadcast messages to all clients
-			for _, client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					// If client buffer is full, remove it
-					close(client.send)
-					delete(h.clients, client.id)
+			if room, exists := h.rooms[message.RoomID]; exists {
+				for _, client := range room {
+					select {
+					case client.send <- message.Data:
+					default:
+						close(client.send)
+						delete(room, client.id)
+					}
 				}
 			}
 		}

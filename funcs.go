@@ -37,18 +37,6 @@ func addMessage(msg MessageData) {
 	}
 }
 
-// checkIfUserIn; Checks if user is in our userlist.
-// Returns true if "name" is in list.
-func checkIfUserIn(name string) bool {
-	for user := range userlist {
-		if userlist[user] == name {
-			// "user" is in.
-			return true
-		}
-	}
-	return false
-}
-
 // forceLogin; sends client a force-login event.
 func forceLogin(c *Client, message string) {
 	forceLogin := Event{
@@ -63,6 +51,21 @@ func forceLogin(c *Client, message string) {
 		return
 	}
 	c.send <- forceLoginJson
+}
+
+func forceRoom(c *Client, message string) {
+	forceRoom := Event{
+		Event: "force-room",
+		Data:  message,
+	}
+
+	forceRoomJson, err := json.Marshal(forceRoom)
+
+	if err != nil {
+		logger("ERROR", "Failed to encode force-room event:", err)
+		return
+	}
+	c.send <- forceRoomJson
 }
 
 // etagMiddleware adds ETag headers to static file responses and handles conditional requests.
