@@ -65,8 +65,8 @@ func forceLogin(c *Client, message string) {
 	c.send <- forceLoginJson
 }
 
-// etagMiddleware adds ETag headers to static file responses and handles conditional requests.
-func etagMiddleware(next http.Handler) http.Handler {
+// middleware adds ETag headers to static file responses and handles conditional requests.
+func middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		filePath := "html" + r.URL.Path
 		if stat, err := os.Stat(filePath); err == nil && !stat.IsDir() {

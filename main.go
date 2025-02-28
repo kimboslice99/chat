@@ -28,7 +28,7 @@ var cacheSize *int = cache     // message cache size.
 func main() {
 	// serve static assets.
 	fs := http.FileServer(http.Dir("html"))
-	http.Handle("/", etagMiddleware(fs))
+	http.Handle("/", middleware(fs))
 	flag.Parse()
 	hub := newHub()
 	go hub.run()
