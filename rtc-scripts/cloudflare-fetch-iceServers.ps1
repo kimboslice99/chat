@@ -7,13 +7,13 @@ try {
         -Method POST -Body $($ttl)
     
     $body = $iwr.Content
-    $dataBody = ($body | ConvertFrom-Json).iceServers
+    $iceServers = ($body | ConvertFrom-Json).iceServers
 
-    $newData = $dataBody.urls | ForEach-Object {
+    $newData = $iceServers.urls | ForEach-Object {
         [PSCustomObject]@{
             urls       = $_
-            username   = $dataBody.username
-            credential = $dataBody.credential
+            username   = $iceServers.username
+            credential = $iceServers.credential
         }
     }
 
