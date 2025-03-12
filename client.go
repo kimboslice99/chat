@@ -87,12 +87,12 @@ func (c *Client) readPump() {
 			continue
 		}
 
-		logger("DEBUG", "Parsed Event:", message.Event)
-		logger("DEBUG", "Raw Data:", string(message.Data))
+		//logger("DEBUG", "Parsed Event:", message.Event)
+		//logger("DEBUG", "Raw Data:", string(message.Data))
 
 		// Check if the event exists before calling it
 		if handler, exists := c.events.handlers[message.Event]; exists {
-			logger("DEBUG", "Emitting event:", message.Event)
+			//logger("DEBUG", "Emitting event:", message.Event)
 			handler(c, message.Data)
 		} else {
 			logger("DEBUG", "Event not found:", message.Event)
